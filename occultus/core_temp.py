@@ -74,12 +74,14 @@ class Occultus:
         self.source = source
         self.img_size = img_size
         self.view_image = False
+        self.nosave = False
 
     def load_stream(self, source: str = "0", img_size=640, flipped=False):
         self.source = source
         self.img_size = img_size
         self.view_image = True
         self.flipped = flipped
+        self.nosave = True
 
     def set_config(self, config: dict):
         self.conf_thres = config.get("conf-thres", self.conf_thres)
@@ -597,7 +599,7 @@ class Occultus:
                 #     ext_frame.configure(image=imgtk)
 
                 elif self.view_image:
-                    im0 = cv2.flip(im0, 1) if self.flipped else im0 
+                    im0 = cv2.flip(im0, 1) if self.flipped else im0
                     cv2.imshow(str(p), im0)
                     cv2.waitKey(1)  # 1 millisecond
 
