@@ -2,11 +2,7 @@ from occultus.core_temp import Occultus
 
 detect = Occultus("weights/kamukha-v2.pt")
 detect.load_stream()
-detect.set_config(
-    {
-        "conf-thres": 0.5,
-    }
-)
+detect.set_config({"conf-thres": 0.5, "flipped": True, "nolabel": True})
 
 # frames = detect.initialize_model()
 

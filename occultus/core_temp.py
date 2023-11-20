@@ -54,6 +54,7 @@ class Occultus:
         self.view_image = True
         self.id_list: list = []
         self.view_image_test = None
+        self.flipped = False
         self.model = {}
         pass
 
@@ -74,10 +75,11 @@ class Occultus:
         self.img_size = img_size
         self.view_image = False
 
-    def load_stream(self, source: str = "0", img_size=640):
+    def load_stream(self, source: str = "0", img_size=640, flipped=False):
         self.source = source
         self.img_size = img_size
         self.view_image = True
+        self.flipped = flipped
 
     def set_config(self, config: dict):
         self.conf_thres = config.get("conf-thres", self.conf_thres)
@@ -91,6 +93,7 @@ class Occultus:
         self.thickness = config.get("thickness", self.thickness)
         self.nobbox = config.get("nobbox", self.nobbox)
         self.nolabel = config.get("nolabel", self.nolabel)
+        self.flipped = config.get("flipped", self.flipped)
 
     def initialize_model(self):
         trace = False
@@ -568,6 +571,7 @@ class Occultus:
                         nolabel=self.nolabel,
                         thickness=self.thickness,
                         id_list=self.id_list,
+                        flipped=self.flipped,
                     )
 
                 print(f"Done. ({(1E3 * (t2 - t1)):.1f}ms)")
@@ -587,13 +591,14 @@ class Occultus:
                         2,
                     )
 
-                if ext_frame:
-                    imgtk = ImageTk.PhotoImage(image=im0)
-                    ext_frame.imgtk = imgtk
-                    ext_frame.configure(image=imgtk)
+                # if ext_frame:
+                #     imgtk = ImageTk.PhotoImage(image=im0)
+                #     ext_frame.imgtk = imgtk
+                #     ext_frame.configure(image=imgtk)
 
                 elif self.view_image:
-                    cv2.imshow(str(p), flipped)
+                    im0 = cv2.flip(im0, 1) if self.flipped else im0 
+                    cv2.imshow(str(p), im0)
                     cv2.waitKey(1)  # 1 millisecond
 
                 # Save results (image with detections)
