@@ -63,6 +63,7 @@ def draw_boxes(
     confidences=None,
     names=None,
     colors=None,
+    id_list=None,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
@@ -76,7 +77,7 @@ def draw_boxes(
 
         color = (0, 0, 255)
 
-        if not nobbox:
+        if not nobbox and id not in id_list:
             cv2.rectangle(img, (x1, y1), (x2, y2), color, tl)
 
             # Calculate the center of the bounding box
@@ -89,7 +90,7 @@ def draw_boxes(
                 img, (center_x, center_y), 3, (0, 255, 0), -1
             )  # Adjust the circle size as needed
 
-        if not nolabel:
+        if not nolabel and id not in id_list:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None

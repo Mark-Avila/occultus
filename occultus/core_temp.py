@@ -54,6 +54,7 @@ class Occultus:
         self.view_image = True
         self.id_list: list = []
         self.view_image_test = None
+        self.model = {}
         pass
 
     def append_id(self, new_id):
@@ -90,6 +91,285 @@ class Occultus:
         self.thickness = config.get("thickness", self.thickness)
         self.nobbox = config.get("nobbox", self.nobbox)
         self.nolabel = config.get("nolabel", self.nolabel)
+
+    def initialize_model(self):
+        trace = False
+        self.model["augment"] = False
+        self.model["sort_tracker"] = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
+
+        self.save_img = not self.nosave and not self.source.endswith(".txt")
+        self.model["webcam"] = (
+            self.source.isnumeric()
+            or self.source.endswith(".txt")
+            or self.source.lower().startswith(
+                ("rtsp://", "rtmp://", "http://", "https://")
+            )
+        )
+        self.model["save_dir"] = Path(
+            increment_path(Path(self.output) / self.name, exist_ok=False)
+        )  # increment run
+
+        if not self.nosave:
+            (self.model["save_dir"]).mkdir(parents=True, exist_ok=True)  # make dir
+
+        # Initialize
+        set_logging()
+        self.model["device"] = select_device(self.device)
+        self.model["half"] = (
+            self.model["device"].type != "cpu"
+        )  # half precision only supported on CUDA
+
+        # Load model
+        self.model["model"] = attempt_load(
+            self.weights, map_location=self.model["device"]
+        )  # load FP32 model
+        stride = int(self.model["model"].stride.max())  # model stride
+        self.model["imgsz"] = check_img_size(self.img_size, s=stride)  # check img_size
+
+        if trace:
+            self.model["model"] = TracedModel(
+                self.model["model"], self.model["device"], self.img_size
+            )
+
+        if self.model["half"]:
+            self.model["model"].half()  # to FP16
+
+        # Second-stage classifier
+        self.model["classify"] = False
+        if self.model["classify"]:
+            self.model["modelc"] = load_classifier(name="resnet101", n=2)  # initialize
+            self.model["modelc"].load_state_dict(
+                torch.load("weights/resnet101.pt", map_location=self.model["device"])[
+                    "model"
+                ]
+            ).to(self.model["device"]).eval()
+
+        # Set Dataloader
+        self.model["vid_path"], self.model["vid_writer"] = None, None
+        if self.model["webcam"]:
+            self.view_image = check_imshow()
+            cudnn.benchmark = True  # set True to speed up constant image size inference
+            dataset = LoadStreams(
+                self.source, img_size=self.model["imgsz"], stride=stride
+            )
+        else:
+            dataset = LoadImages(
+                self.source, img_size=self.model["imgsz"], stride=stride
+            )
+
+        return dataset
+
+    def run_inference(self, dataset):
+        # Run inference
+        if self.model["device"].type != "cpu":
+            self.model["model"](
+                torch.zeros(1, 3, self.model["imgsz"], self.model["imgsz"])
+                .to(self.model["device"])
+                .type_as(next(self.model["model"].parameters()))
+            )  # run once
+        old_img_w = old_img_h = self.model["imgsz"]
+        old_img_b = 1
+
+        t0 = time.time()
+        ###################################
+        startTime = 0
+        ###################################
+
+        for path, img, im0s, vid_cap in dataset:
+            img = torch.from_numpy(img).to(self.model["device"])
+            img = img.half() if self.model["half"] else img.float()  # uint8 to fp16/32
+            img /= 255.0  # 0 - 255 to 0.0 - 1.0
+            if img.ndimension() == 3:
+                img = img.unsqueeze(0)
+
+            # Warmup
+            if self.model["device"].type != "cpu" and (
+                old_img_b != img.shape[0]
+                or old_img_h != img.shape[2]
+                or old_img_w != img.shape[3]
+            ):
+                old_img_b = img.shape[0]
+                old_img_h = img.shape[2]
+                old_img_w = img.shape[3]
+                for i in range(3):
+                    self.model["model"](img, augment=self.model["augment"])[0]
+
+            # Inference
+            # t1 = time_synchronized()
+            pred = self.model["model"](img, augment=self.model["augment"])[0]
+            # t2 = time_synchronized()
+
+            # Apply NMS
+            pred = non_max_suppression(
+                pred,
+                self.conf_thres,
+                self.iou,
+                classes=0,
+                agnostic=False,
+            )
+            # t3 = time_synchronized()
+
+            # Apply Classifier
+            if self.model["classify"]:
+                pred = apply_classifier(pred, self.model["modelc"], img, im0s)
+
+            iterables = {"path": path, "im0s": im0s, "img": img, "vid_cap": vid_cap}
+
+            yield pred, dataset, iterables
+
+            # ----- INFERENCE END ------ #
+
+    def process_preds(self, pred, dataset, iterables):
+        names = (
+            self.model["model"].names
+            if hasattr(self.model["model"], "module")
+            else self.model["model"].names
+        )
+        colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
+
+        # Process detections
+        for i, det in enumerate(pred):  # detections per image
+            if self.model["webcam"]:  # batch_size >= 1
+                p, s, im0, frame = (
+                    iterables["path"][i],
+                    "%g: " % i,
+                    iterables["im0s"][i].copy(),
+                    dataset.count,
+                )
+            else:
+                p, s, im0, frame = (
+                    iterables["path"],
+                    "",
+                    iterables["im0s"],
+                    getattr(dataset, "frame", 0),
+                )
+
+            p = Path(p)  # to Path
+            save_path = str(self.model["save_dir"] / p.name)  # img.jpg
+            txt_path = str(self.model["save_dir"] / "labels" / p.stem) + (
+                "" if dataset.mode == "image" else f"_{frame}"
+            )  # img.txt
+            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            if len(det):
+                # Rescale boxes from img_size to im0 size
+                det[:, :4] = scale_coords(
+                    iterables["img"].shape[2:], det[:, :4], im0.shape
+                ).round()
+
+                # Print results
+                for c in det[:, -1].unique():
+                    n = (det[:, -1] == c).sum()  # detections per class
+                    s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+
+                dets_to_sort = np.empty((0, 6))
+                # NOTE: We send in detected object class too
+                for x1, y1, x2, y2, conf, detclass in det.cpu().detach().numpy():
+                    dets_to_sort = np.vstack(
+                        (dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass]))
+                    )
+
+                tracked_dets = self.model["sort_tracker"].update(dets_to_sort, False)
+                tracks = self.model["sort_tracker"].getTrackers()
+
+                # draw boxes for visualization
+                if len(tracked_dets) > 0:
+                    bbox_xyxy = tracked_dets[:, :4]
+                    identities = tracked_dets[:, 8]
+                    categories = tracked_dets[:, 4]
+                    confidences = None
+
+                    if self.track:
+                        # loop over tracks
+                        for t, track in enumerate(tracks):
+                            track_color = (0, 0, 255)
+
+                            [
+                                cv2.line(
+                                    im0,
+                                    (
+                                        int(track.centroidarr[i][0]),
+                                        int(track.centroidarr[i][1]),
+                                    ),
+                                    (
+                                        int(track.centroidarr[i + 1][0]),
+                                        int(track.centroidarr[i + 1][1]),
+                                    ),
+                                    track_color,
+                                    thickness=self.thickness,
+                                )
+                                for i, _ in enumerate(track.centroidarr)
+                                if i < len(track.centroidarr) - 1
+                            ]
+                else:
+                    bbox_xyxy = dets_to_sort[:, :4]
+                    identities = None
+                    categories = dets_to_sort[:, 5]
+                    confidences = dets_to_sort[:, 4]
+
+                im0 = draw_boxes(
+                    im0,
+                    bbox_xyxy,
+                    identities=identities,
+                    categories=categories,
+                    confidences=confidences,
+                    names=names,
+                    colors=colors,
+                    nobbox=self.nobbox,
+                    nolabel=self.nolabel,
+                    thickness=self.thickness,
+                    id_list=self.id_list,
+                )
+
+            # print(f"Done. ({(1E3 * (t2 - t1)):.1f}ms)")
+
+            if dataset.mode != "image" and self.show_fps:
+                currentTime = time.time()
+
+                fps = 1 / (currentTime - startTime)
+                startTime = currentTime
+                cv2.putText(
+                    im0,
+                    "FPS: " + str(int(fps)),
+                    (20, 70),
+                    cv2.FONT_HERSHEY_PLAIN,
+                    2,
+                    (0, 255, 0),
+                    2,
+                )
+
+            # if ext_frame:
+            #     imgtk = ImageTk.PhotoImage(image=im0)
+            #     ext_frame.imgtk = imgtk
+            #     ext_frame.configure(image=imgtk)
+            elif self.view_image:
+                cv2.imshow(str(p), im0)
+                cv2.waitKey(1)  # 1 millisecond
+
+            # Save results (image with detections)
+            if self.save_img:
+                if dataset.mode == "image":
+                    cv2.imwrite(save_path, im0)
+                    print(f" The image with the result is saved in: {save_path}")
+                else:  # 'video' or 'stream'
+                    if self.model["vid_path"] != save_path:  # new video
+                        self.model["vid_path"] = save_path
+                        if isinstance(self.model["vid_writer"], cv2.VideoWriter):
+                            self.model[
+                                "vid_writer"
+                            ].release()  # release previous video writer
+                        if iterables["vid_cap"]:  # video
+                            fps = iterables["vid_cap"].get(cv2.CAP_PROP_FPS)
+                            w = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_WIDTH))
+                            h = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_HEIGHT))
+                        else:  # stream
+                            fps, w, h = 30, im0.shape[1], im0.shape[0]
+                            save_path += ".mp4"
+                        self.model["vid_writer"] = cv2.VideoWriter(
+                            save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
+                        )
+                    self.model["vid_writer"].write(im0)
+
+        print("\n")
 
     def run(self, log=True, ext_frame=None):
         trace = False
@@ -313,7 +593,7 @@ class Occultus:
                     ext_frame.configure(image=imgtk)
 
                 elif self.view_image:
-                    cv2.imshow(str(p), im0)
+                    cv2.imshow(str(p), flipped)
                     cv2.waitKey(1)  # 1 millisecond
 
                 # Save results (image with detections)
