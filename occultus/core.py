@@ -20,9 +20,7 @@ from occultus.utils.general import (
     set_logging,
     increment_path,
 )
-from occultus.utils.plots import (
-    draw_boxes,
-)
+from occultus.utils.plots import draw_boxes, blur_boxes, pixelate_boxes, fill_boxes
 from occultus.utils.torch_utils import (
     select_device,
     load_classifier,
@@ -56,6 +54,7 @@ class Occultus:
         self.view_image_test = None
         self.flipped = False
         self.model = {}
+        self.blur_type = "gaussian"
         pass
 
     def append_id(self, new_id):
@@ -96,6 +95,7 @@ class Occultus:
         self.nobbox = config.get("nobbox", self.nobbox)
         self.nolabel = config.get("nolabel", self.nolabel)
         self.flipped = config.get("flipped", self.flipped)
+        self.blur_type = config.get("blur_type", self.blur_type)
 
     def initialize(self):
         trace = False
@@ -217,7 +217,7 @@ class Occultus:
 
             yield pred, dataset, iterables
 
-    def process(self, pred, dataset, iterables):
+    def process(self, pred, dataset, iterables, blur=True):
         names = (
             self.model["model"].names
             if hasattr(self.model["model"], "module")
@@ -306,17 +306,25 @@ class Occultus:
                     categories = dets_to_sort[:, 5]
                     confidences = dets_to_sort[:, 4]
 
-                im0 = draw_boxes(
+                # Define a dictionary to map blur types to functions
+                blur_functions = {
+                    "fill": fill_boxes,
+                    "gaussian": blur_boxes,
+                    "pixel": pixelate_boxes,
+                }
+
+                selected_function = blur_functions.get(self.blur_type, draw_boxes)
+
+                # Call the selected function with the appropriate parameters
+                im0 = selected_function(
                     im0,
                     bbox_xyxy,
                     identities=identities,
                     categories=categories,
                     confidences=confidences,
                     names=names,
-                    colors=colors,
                     nobbox=self.nobbox,
                     nolabel=self.nolabel,
-                    thickness=self.thickness,
                     id_list=self.id_list,
                 )
 

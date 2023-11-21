@@ -45,32 +45,27 @@ def hist2d(x, y, n=100):
     return np.log(hist[xidx, yidx])
 
 
-def blur_bounding_box(x, img, blur_kernel_size=(25, 25)):
-    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
-    roi = img[c1[1] : c2[1], c1[0] : c2[0]]
-    blurred_roi = cv2.GaussianBlur(roi, blur_kernel_size, 0)
-    img[c1[1] : c2[1], c1[0] : c2[0]] = blurred_roi
+# def blur_bounding_box(x, img, blur_kernel_size=(25, 25)):
+#     c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+#     roi = img[c1[1] : c2[1], c1[0] : c2[0]]
+#     blurred_roi = cv2.GaussianBlur(roi, blur_kernel_size, 0)
+#     img[c1[1] : c2[1], c1[0] : c2[0]] = blurred_roi
 
 
 def draw_boxes(
     img,
     bbox,
-    thickness=None,
     nobbox=None,
     nolabel=None,
     identities=None,
     categories=None,
     confidences=None,
     names=None,
-    colors=None,
     id_list=None,
-    flipped=False,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
-        tl = (
-            thickness or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1
-        )  # line/font thickness
+        tl = round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1
 
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
@@ -116,118 +111,158 @@ def draw_boxes(
     return img
 
 
-def draw_boxes_with_blur(
+def blur_boxes(
     img,
     bbox,
-    blur_radius=25,
+    intensity=51,
     nobbox=None,
     nolabel=None,
     identities=None,
     categories=None,
     confidences=None,
     names=None,
-    colors=None,
+    id_list=None,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
 
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
-        # conf = confidences[i] if confidences is not None else 0
 
-        color = colors[cat]
+        if not nobbox and id not in id_list:
+            # Create a mask for the region inside the bounding box
+            mask = np.zeros_like(img)
+            mask[y1:y2, x1:x2] = img[y1:y2, x1:x2]
 
-        if not nobbox:
-            if blur_radius > 0:
-                # Create a copy of the region within the bounding box
-                roi = img[y1:y2, x1:x2].copy()
+            # Apply Gaussian blur only to the region inside the bounding box
+            blurred_region = cv2.GaussianBlur(
+                mask[y1:y2, x1:x2], (intensity, intensity), 0
+            )
 
-                # Apply Gaussian blur to the region
-                blurred_roi = cv2.GaussianBlur(roi, (blur_radius, blur_radius), 0)
+            # Replace the original region with the blurred region
+            img[y1:y2, x1:x2] = blurred_region
 
-                # Replace the region in the original image with the blurred region
-                img[y1:y2, x1:x2] = blurred_roi
-            else:
-                cv2.rectangle(
-                    img, (x1, y1), (x2, y2), color, -1
-                )  # Draw a filled rectangle
-
-        if not nolabel:
+        if not nolabel and id not in id_list:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None
                 else f"{names[cat]} {confidences[i]:.2f}"
             )
-            tf = 1  # Font thickness
-            t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=tf)[0]
-            c2 = x1 + t_size[0], y1 - t_size[1] - 3
-            cv2.rectangle(img, (x1, y1), c2, color, -1, cv2.LINE_AA)  # filled
+
+            # Draw the label at the top-left corner of the bounding box
             cv2.putText(
                 img,
                 label,
-                (x1, y1 - 2),
-                0,
+                (x1, y1),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                [255, 255, 255],
                 1,
-                [0, 0, 0],  # Black text color
-                thickness=tf,
-                lineType=cv2.LINE_AA,
+                cv2.LINE_AA,
             )
 
     return img
 
 
-def draw_boxes_with_pixel_blur(
+def fill_boxes(
     img,
     bbox,
-    blur_radius=25,
+    fill_color=(0, 0, 0),  # Set your desired fill color (BGR format)
     nobbox=None,
     nolabel=None,
     identities=None,
     categories=None,
     confidences=None,
     names=None,
-    colors=None,
+    id_list=None,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
 
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
-        # conf = confidences[i] if confidences is not None else 0
 
-        if not nobbox:
-            cv2.rectangle(
-                img, (x1, y1), (x2, y2), colors[cat], -1
-            )  # Draw a filled rectangle
+        if not nobbox and id not in id_list:
+            # Fill the bounding box with the specified color
+            img[y1:y2, x1:x2] = fill_color
 
-        if not nolabel:
+        if not nolabel and id not in id_list:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None
                 else f"{names[cat]} {confidences[i]:.2f}"
             )
-            tf = 1  # Font thickness
-            t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=tf)[0]
-            c2 = x1 + t_size[0], y1 - t_size[1] - 3
-            cv2.rectangle(
-                img, (x1, y1), c2, [0, 0, 0], -1, cv2.LINE_AA
-            )  # Black text background
+
+            # Draw the label at the top-left corner of the bounding box
             cv2.putText(
                 img,
                 label,
-                (x1, y1 - 2),
-                0,
+                (x1, y1),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                [255, 255, 255],
                 1,
-                [255, 255, 255],  # White text color
-                thickness=tf,
-                lineType=cv2.LINE_AA,
+                cv2.LINE_AA,
             )
 
-        # Apply pixel-level blur to the region within the bounding box
-        if blur_radius > 0:
-            roi = img[y1:y2, x1:x2]
-            blurred_roi = cv2.GaussianBlur(roi, (blur_radius, blur_radius), 0)
-            img[y1:y2, x1:x2] = blurred_roi
+    return img
+
+
+def pixelate_boxes(
+    img,
+    bbox,
+    nobbox=None,
+    nolabel=None,
+    identities=None,
+    categories=None,
+    confidences=None,
+    names=None,
+    id_list=None,
+    intensity=10,
+):
+    for i, box in enumerate(bbox):
+        x1, y1, x2, y2 = [int(i) for i in box]
+
+        cat = int(categories[i]) if categories is not None else 0
+        id = int(identities[i]) if identities is not None else 0
+
+        if not nobbox and id not in id_list:
+            # Calculate the pixel size based on the size of the bounding box
+            box_width = x2 - x1
+            box_height = y2 - y1
+            pixel_size = max(1, int(max(box_width, box_height) / intensity))
+
+            # Pixelate the region inside the bounding box
+            region_to_pixelate = img[y1:y2, x1:x2]
+            pixelated_region = cv2.resize(
+                region_to_pixelate,
+                (int(box_width / pixel_size), int(box_height / pixel_size)),
+                interpolation=cv2.INTER_NEAREST,
+            )
+            img[y1:y2, x1:x2] = cv2.resize(
+                pixelated_region,
+                (box_width, box_height),
+                interpolation=cv2.INTER_NEAREST,
+            )
+
+        if not nolabel and id not in id_list:
+            label = (
+                str(id) + ":" + names[cat]
+                if identities is not None
+                else f"{names[cat]} {confidences[i]:.2f}"
+            )
+
+            # Draw the label at the top-left corner of the bounding box
+            cv2.putText(
+                img,
+                label,
+                (x1, y1),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                [255, 255, 255],
+                1,
+                cv2.LINE_AA,
+            )
 
     return img
 
