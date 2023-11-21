@@ -97,7 +97,7 @@ class Occultus:
         self.nolabel = config.get("nolabel", self.nolabel)
         self.flipped = config.get("flipped", self.flipped)
 
-    def initialize_model(self):
+    def initialize(self):
         trace = False
         self.model["augment"] = False
         self.model["sort_tracker"] = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
@@ -172,7 +172,7 @@ class Occultus:
 
         return dataset
 
-    def run_inference(self, dataset):
+    def inference(self, dataset):
         old_img_w = old_img_h = self.model["imgsz"]
         old_img_b = 1
         for path, img, im0s, vid_cap in dataset:
@@ -217,7 +217,7 @@ class Occultus:
 
             yield pred, dataset, iterables
 
-    def process_preds(self, pred, dataset, iterables):
+    def process(self, pred, dataset, iterables):
         names = (
             self.model["model"].names
             if hasattr(self.model["model"], "module")
