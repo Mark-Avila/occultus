@@ -162,24 +162,19 @@ class Occultus:
                 self.source, img_size=self.model["imgsz"], stride=stride
             )
 
-        return dataset
-
-    def run_inference(self, dataset):
-        # Run inference
+        # Run inference once
         if self.model["device"].type != "cpu":
             self.model["model"](
                 torch.zeros(1, 3, self.model["imgsz"], self.model["imgsz"])
                 .to(self.model["device"])
                 .type_as(next(self.model["model"].parameters()))
             )  # run once
+
+        return dataset
+
+    def run_inference(self, dataset):
         old_img_w = old_img_h = self.model["imgsz"]
         old_img_b = 1
-
-        t0 = time.time()
-        ###################################
-        startTime = 0
-        ###################################
-
         for path, img, im0s, vid_cap in dataset:
             img = torch.from_numpy(img).to(self.model["device"])
             img = img.half() if self.model["half"] else img.float()  # uint8 to fp16/32
@@ -222,8 +217,6 @@ class Occultus:
 
             yield pred, dataset, iterables
 
-            # ----- INFERENCE END ------ #
-
     def process_preds(self, pred, dataset, iterables):
         names = (
             self.model["model"].names
@@ -231,6 +224,8 @@ class Occultus:
             else self.model["model"].names
         )
         colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
+
+        im0 = None
 
         # Process detections
         for i, det in enumerate(pred):  # detections per image
@@ -250,8 +245,8 @@ class Occultus:
                 )
 
             p = Path(p)  # to Path
-            save_path = str(self.model["save_dir"] / p.name)  # img.jpg
-            txt_path = str(self.model["save_dir"] / "labels" / p.stem) + (
+            self.model["save_path"] = str(self.model["save_dir"] / p.name)  # img.jpg
+            self.model["txt_path"] = str(self.model["save_dir"] / "labels" / p.stem) + (
                 "" if dataset.mode == "image" else f"_{frame}"
             )  # img.txt
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
@@ -325,56 +320,32 @@ class Occultus:
                     id_list=self.id_list,
                 )
 
-            # print(f"Done. ({(1E3 * (t2 - t1)):.1f}ms)")
+        return im0
 
-            if dataset.mode != "image" and self.show_fps:
-                currentTime = time.time()
+    def show_frame(frame):
+        cv2.imshow("Face", frame)
+        cv2.waitKey(1)  # 1 millisecond
 
-                fps = 1 / (currentTime - startTime)
-                startTime = currentTime
-                cv2.putText(
-                    im0,
-                    "FPS: " + str(int(fps)),
-                    (20, 70),
-                    cv2.FONT_HERSHEY_PLAIN,
-                    2,
-                    (0, 255, 0),
-                    2,
-                )
+    def save_img(self, frame):
+        cv2.imwrite(self.model["save_path"], frame)
+        print(f"The image with the result is saved in: {self.model['save_path']}")
 
-            # if ext_frame:
-            #     imgtk = ImageTk.PhotoImage(image=im0)
-            #     ext_frame.imgtk = imgtk
-            #     ext_frame.configure(image=imgtk)
-            elif self.view_image:
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
-
-            # Save results (image with detections)
-            if self.save_img:
-                if dataset.mode == "image":
-                    cv2.imwrite(save_path, im0)
-                    print(f" The image with the result is saved in: {save_path}")
-                else:  # 'video' or 'stream'
-                    if self.model["vid_path"] != save_path:  # new video
-                        self.model["vid_path"] = save_path
-                        if isinstance(self.model["vid_writer"], cv2.VideoWriter):
-                            self.model[
-                                "vid_writer"
-                            ].release()  # release previous video writer
-                        if iterables["vid_cap"]:  # video
-                            fps = iterables["vid_cap"].get(cv2.CAP_PROP_FPS)
-                            w = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        else:  # stream
-                            fps, w, h = 30, im0.shape[1], im0.shape[0]
-                            save_path += ".mp4"
-                        self.model["vid_writer"] = cv2.VideoWriter(
-                            save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
-                        )
-                    self.model["vid_writer"].write(im0)
-
-        print("\n")
+    def save_video(self, frame, iterables):
+        if self.model["vid_path"] != self.model["save_path"]:  # new video
+            self.model["vid_path"] = self.model["save_path"]
+            if isinstance(self.model["vid_writer"], cv2.VideoWriter):
+                self.model["vid_writer"].release()  # release previous video writer
+            if iterables["vid_cap"]:  # video
+                fps = iterables["vid_cap"].get(cv2.CAP_PROP_FPS)
+                w = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_HEIGHT))
+            else:  # stream
+                fps, w, h = 30, frame.shape[1], frame.shape[0]
+                self.model["save_path"] += ".mp4"
+            self.model["vid_writer"] = cv2.VideoWriter(
+                self.model["save_path"], cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
+            )
+        self.model["vid_writer"].write(frame)
 
     def run(self, log=True, ext_frame=None):
         trace = False

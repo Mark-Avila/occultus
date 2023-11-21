@@ -237,6 +237,7 @@ class LoadImages:  # for inference
                     ret_val, img0 = self.cap.read()
 
             self.frame += 1
+            # print(self.nframes)
             # print(f'video {self.count + 1}/{self.nf} ({self.frame}/{self.nframes}) {path}: ', end='')
 
         else:
@@ -260,8 +261,11 @@ class LoadImages:  # for inference
         self.cap = cv2.VideoCapture(path)
         self.nframes = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    def numframes(self) -> int:
+        return self.nframes
+
     def __len__(self):
-        return self.nf  # number of files
+        return self.nf
 
 
 class LoadWebcam:  # for inference
