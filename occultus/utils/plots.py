@@ -45,13 +45,6 @@ def hist2d(x, y, n=100):
     return np.log(hist[xidx, yidx])
 
 
-# def blur_bounding_box(x, img, blur_kernel_size=(25, 25)):
-#     c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
-#     roi = img[c1[1] : c2[1], c1[0] : c2[0]]
-#     blurred_roi = cv2.GaussianBlur(roi, blur_kernel_size, 0)
-#     img[c1[1] : c2[1], c1[0] : c2[0]] = blurred_roi
-
-
 def draw_boxes(
     img,
     bbox,
@@ -167,7 +160,7 @@ def blur_boxes(
 def fill_boxes(
     img,
     bbox,
-    fill_color=(0, 0, 0),  # Set your desired fill color (BGR format)
+    fill_color=(0, 0, 0),
     nobbox=None,
     nolabel=None,
     identities=None,
@@ -268,7 +261,6 @@ def pixelate_boxes(
 
 
 def butter_lowpass_filtfilt(data, cutoff=1500, fs=50000, order=5):
-    # https://stackoverflow.com/questions/28536191/how-to-filter-smooth-with-scipy-numpy
     def butter_lowpass(cutoff, fs, order):
         nyq = 0.5 * fs
         normal_cutoff = cutoff / nyq
