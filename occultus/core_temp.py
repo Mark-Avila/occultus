@@ -217,6 +217,51 @@ class Occultus:
 
             yield pred, dataset, iterables
 
+    def inference(self, dataset):
+        old_img_w = old_img_h = self.model["imgsz"]
+        old_img_b = 1
+        for path, img, im0s, vid_cap in dataset:
+            img = torch.from_numpy(img).to(self.model["device"])
+            img = img.half() if self.model["half"] else img.float()  # uint8 to fp16/32
+            img /= 255.0  # 0 - 255 to 0.0 - 1.0
+            if img.ndimension() == 3:
+                img = img.unsqueeze(0)
+
+            # Warmup
+            if self.model["device"].type != "cpu" and (
+                old_img_b != img.shape[0]
+                or old_img_h != img.shape[2]
+                or old_img_w != img.shape[3]
+            ):
+                old_img_b = img.shape[0]
+                old_img_h = img.shape[2]
+                old_img_w = img.shape[3]
+                for i in range(3):
+                    self.model["model"](img, augment=self.model["augment"])[0]
+
+            # Inference
+            # t1 = time_synchronized()
+            pred = self.model["model"](img, augment=self.model["augment"])[0]
+            # t2 = time_synchronized()
+
+            # Apply NMS
+            pred = non_max_suppression(
+                pred,
+                self.conf_thres,
+                self.iou,
+                classes=0,
+                agnostic=False,
+            )
+            # t3 = time_synchronized()
+
+            # Apply Classifier
+            if self.model["classify"]:
+                pred = apply_classifier(pred, self.model["modelc"], img, im0s)
+
+            iterables = {"path": path, "im0s": im0s, "img": img, "vid_cap": vid_cap}
+
+            yield pred, dataset, iterables
+
     def process(self, pred, dataset, iterables):
         names = (
             self.model["model"].names
