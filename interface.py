@@ -30,7 +30,7 @@ class App(ctk.CTk):
         button = ctk.CTkButton(self.sidebar, text="Test", command=self.button_callbck)
         button.pack(padx=20, pady=20)
 
-        self.after(50, self.video_loop_temp)
+        self.video_loop_temp()
 
     def button_callbck(self):
         print("button clicked")
@@ -65,21 +65,9 @@ class App(ctk.CTk):
                 imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             )
             self.content.configure(image=imgtk)  # show the image
-            self.after(30, self.video_loop_temp)
+            self.after(10, self.video_loop_temp)
+
             return
-
-        # pred, dataset, iterables = self.detect.inference(self.frames)
-        # frame = self.detect.process(pred, dataset, iterables)
-        # self.current_image = Image.fromarray(frame)  # convert image for PIL
-        # imgtk = ImageTk.PhotoImage(
-        #     image=self.current_image
-        # )  # convert image for tkinter
-        # self.content.imgtk = (
-        #     imgtk  # anchor imgtk so it does not be deleted by garbage-collector
-        # )
-        # self.content.configure(image=imgtk)  # show the image
-
-        # self.after(50, self.video_loop_temp)
 
 
 app = App()
