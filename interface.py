@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import cv2
 from PIL import Image, ImageTk
-from occultus.core_temp import Occultus
+from occultus.core import Occultus
 
 cap = None
 
