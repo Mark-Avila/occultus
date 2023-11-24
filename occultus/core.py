@@ -20,9 +20,7 @@ from occultus.utils.general import (
     set_logging,
     increment_path,
 )
-from occultus.utils.plots import (
-    draw_boxes,
-)
+from occultus.utils.plots import draw_boxes, blur_boxes, pixelate_boxes, fill_boxes
 from occultus.utils.torch_utils import (
     select_device,
     load_classifier,
@@ -55,6 +53,7 @@ class Occultus:
         self.id_list: list = []
         self.view_image_test = None
         self.flipped = False
+        self.blur_type = "detect"
         self.model = {}
         pass
 
@@ -96,6 +95,7 @@ class Occultus:
         self.nobbox = config.get("nobbox", self.nobbox)
         self.nolabel = config.get("nolabel", self.nolabel)
         self.flipped = config.get("flipped", self.flipped)
+        self.blur_type = config.get("blur_type", self.blur_type)
 
     def initialize(self):
         trace = False
@@ -268,7 +268,6 @@ class Occultus:
             if hasattr(self.model["model"], "module")
             else self.model["model"].names
         )
-        colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
 
         im0 = None
 
@@ -351,17 +350,24 @@ class Occultus:
                     categories = dets_to_sort[:, 5]
                     confidences = dets_to_sort[:, 4]
 
-                im0 = draw_boxes(
+                blur_functions = {
+                    "blur": blur_boxes,
+                    "pixel": pixelate_boxes,
+                    "fill": fill_boxes,
+                    "detect": draw_boxes,
+                }
+
+                blur_function = blur_functions.get(self.blur_type, draw_boxes)
+
+                im0 = blur_function(
                     im0,
                     bbox_xyxy,
                     identities=identities,
                     categories=categories,
                     confidences=confidences,
                     names=names,
-                    colors=colors,
                     nobbox=self.nobbox,
                     nolabel=self.nolabel,
-                    thickness=self.thickness,
                     id_list=self.id_list,
                 )
 

@@ -13,6 +13,7 @@ class App(ctk.CTk):
 
         self.detect = Occultus("weights/kamukha-v2.pt")
         self.detect.load_stream()
+        self.detect.set_config({"blur_type": "pixel", "flipped": True})
 
         self.frames = self.detect.initialize()
 
@@ -27,13 +28,33 @@ class App(ctk.CTk):
 
         self.rowconfigure(0, weight=1)
 
-        button = ctk.CTkButton(self.sidebar, text="Test", command=self.button_callbck)
-        button.pack(padx=20, pady=20)
+        blur_button = ctk.CTkButton(self.sidebar, text="Blur", command=self.set_blur)
+        blur_button.pack(padx=20, pady=5)
+
+        pixel_button = ctk.CTkButton(self.sidebar, text="Pixel", command=self.set_pixel)
+        pixel_button.pack(padx=20, pady=5)
+
+        fill_button = ctk.CTkButton(self.sidebar, text="Fill", command=self.set_fill)
+        fill_button.pack(padx=20, pady=5)
+
+        detect_button = ctk.CTkButton(
+            self.sidebar, text="Detect", command=self.set_detect
+        )
+        detect_button.pack(padx=20, pady=5)
 
         self.video_loop_temp()
 
-    def button_callbck(self):
-        print("button clicked")
+    def set_blur(self):
+        self.detect.set_config({"blur_type": "blur"})
+
+    def set_pixel(self):
+        self.detect.set_config({"blur_type": "pixel"})
+
+    def set_fill(self):
+        self.detect.set_config({"blur_type": "fill"})
+
+    def set_detect(self):
+        self.detect.set_config({"blur_type": "detect"})
 
     def video_loop(self):
         """Get frame from the video stream and show it in Tkinter"""
