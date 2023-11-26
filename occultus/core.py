@@ -48,7 +48,7 @@ class Occultus:
         self.show_fps = False
         self.thickness = 2
         self.nobbox = False
-        self.nolabel = False
+        self.nolabel = True
         self.view_image = True
         self.id_list: list = []
         self.view_image_test = None

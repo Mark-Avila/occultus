@@ -11,14 +11,22 @@ class App(ctk.CTk):
         super().__init__()
         self.geometry("720x480")
 
+        # Initialize Occultus object and assign to detect
         self.detect = Occultus("weights/kamukha-v2.pt")
+
+        # Set model for streaming (using camera)
         self.detect.load_stream()
+
+        # Set model configurations
         self.detect.set_config({"blur_type": "pixel", "flipped": True})
 
+        # Initialize library (eg. ready library for GPU inferencing)
         self.frames = self.detect.initialize()
 
+        # Initialize current_image for storing frames
         self.current_image = None
 
+        # Interace related code
         self.content = ctk.CTkLabel(self, fg_color="#000000", text="")
         self.content.grid(row=0, column=1, sticky="nsew")
         self.columnconfigure(1, weight=1)
@@ -42,7 +50,8 @@ class App(ctk.CTk):
         )
         detect_button.pack(padx=20, pady=5)
 
-        self.video_loop_temp()
+        # Start detection
+        self.video_loop()
 
     def set_blur(self):
         self.detect.set_config({"blur_type": "blur"})
@@ -57,26 +66,6 @@ class App(ctk.CTk):
         self.detect.set_config({"blur_type": "detect"})
 
     def video_loop(self):
-        """Get frame from the video stream and show it in Tkinter"""
-        ok, frame = self.vs.read()  # read frame from video stream
-
-        frame = cv2.flip(frame, 1)
-
-        if ok:  # frame captured without any errors
-            cv2image = cv2.cvtColor(
-                frame, cv2.COLOR_BGR2RGBA
-            )  # convert colors from BGR to RGBA
-            self.current_image = Image.fromarray(cv2image)  # convert image for PIL
-            imgtk = ImageTk.PhotoImage(
-                image=self.current_image
-            )  # convert image for tkinter
-            self.content.imgtk = (
-                imgtk  # anchor imgtk so it does not be deleted by garbage-collector
-            )
-            self.content.configure(image=imgtk)  # show the image
-        self.after(30, self.video_loop)
-
-    def video_loop_temp(self):
         for pred, dataset, iterables in self.detect.inference(self.frames):
             frame = self.detect.process(pred, dataset, iterables)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
@@ -86,7 +75,7 @@ class App(ctk.CTk):
                 imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             )
             self.content.configure(image=imgtk)  # show the image
-            self.after(10, self.video_loop_temp)
+            self.after(10, self.video_loop)
 
             return
 
