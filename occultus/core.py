@@ -57,7 +57,7 @@ class Occultus:
         self.model = {}
         pass
 
-    def append_id(self, new_id):
+    def append_id(self, new_id: int):
         self.id_list.append(new_id)
 
     def pop_id(self, curr_id):

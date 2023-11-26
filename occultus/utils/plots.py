@@ -123,6 +123,16 @@ def blur_boxes(
         id = int(identities[i]) if identities is not None else 0
 
         if not nobbox and id not in id_list:
+            # Ensure that bounding box coordinates are valid
+            if x1 < 0:
+                x1 = 0
+            if y1 < 0:
+                y1 = 0
+            if x2 > img.shape[1]:
+                x2 = img.shape[1]
+            if y2 > img.shape[0]:
+                y2 = img.shape[0]
+
             # Create a mask for the region inside the bounding box
             mask = np.zeros_like(img)
             mask[y1:y2, x1:x2] = img[y1:y2, x1:x2]
@@ -211,7 +221,7 @@ def pixelate_boxes(
     confidences=None,
     names=None,
     id_list=None,
-    intensity=10,
+    intensity=20,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
@@ -220,23 +230,32 @@ def pixelate_boxes(
         id = int(identities[i]) if identities is not None else 0
 
         if not nobbox and id not in id_list:
+            # Ensure that bounding box coordinates are valid
+            if x1 < 0:
+                x1 = 0
+            if y1 < 0:
+                y1 = 0
+            if x2 > img.shape[1]:
+                x2 = img.shape[1]
+            if y2 > img.shape[0]:
+                y2 = img.shape[0]
+
             # Calculate the pixel size based on the size of the bounding box
             box_width = x2 - x1
             box_height = y2 - y1
-            pixel_size = max(1, int(max(box_width, box_height) / intensity))
 
-            # Pixelate the region inside the bounding box
-            region_to_pixelate = img[y1:y2, x1:x2]
-            pixelated_region = cv2.resize(
-                region_to_pixelate,
-                (int(box_width / pixel_size), int(box_height / pixel_size)),
-                interpolation=cv2.INTER_NEAREST,
-            )
-            img[y1:y2, x1:x2] = cv2.resize(
-                pixelated_region,
-                (box_width, box_height),
-                interpolation=cv2.INTER_NEAREST,
-            )
+            # Ensure that the bounding box has valid dimensions
+            if box_width > 0 and box_height > 0:
+                pixel_size = max(1, int(max(box_width, box_height) / intensity))
+
+                # Pixelate the region inside the bounding box
+                region = img[y1:y2, x1:x2]
+                region = cv2.resize(
+                    region, (pixel_size, pixel_size), interpolation=cv2.INTER_NEAREST
+                )
+                img[y1:y2, x1:x2] = cv2.resize(
+                    region, (box_width, box_height), interpolation=cv2.INTER_NEAREST
+                )
 
         if not nolabel and id not in id_list:
             label = (
