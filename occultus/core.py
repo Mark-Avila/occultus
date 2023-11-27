@@ -270,6 +270,7 @@ class Occultus:
         )
 
         im0 = None
+        bboxes = []
 
         # Process detections
         for i, det in enumerate(pred):  # detections per image
@@ -371,7 +372,9 @@ class Occultus:
                     id_list=self.id_list,
                 )
 
-        return im0
+                bboxes.append(bbox_xyxy)
+
+        return [im0, bboxes]
 
     def show_frame(frame):
         cv2.imshow("Face", frame)

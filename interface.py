@@ -24,7 +24,7 @@ class App(ctk.CTk):
         self.frames = self.detect.initialize()
 
         # Initialize current_image for storing frames
-        self.current_image = None
+        self.bboxes = None
 
         # Interace related code
         self.content = ctk.CTkLabel(self, fg_color="#000000", text="")
@@ -50,6 +50,8 @@ class App(ctk.CTk):
         )
         detect_button.pack(padx=20, pady=5)
 
+        self.content.bind("<Button-1>", self.on_camera_click)
+
         # Start detection
         self.video_loop()
 
@@ -65,20 +67,38 @@ class App(ctk.CTk):
     def set_detect(self):
         self.detect.set_config({"blur_type": "detect"})
 
+    def is_point_inside_box(self, point, box):
+        x, y = point
+        x_min, y_min, x_max, y_max = box[0]
+        return x_min <= x <= x_max and y_min <= y <= y_max
+
+    def on_camera_click(self, event):
+        # Get the coordinates of the mouse click relative to the label
+        coords = (event.x, event.y)
+
+        for box in self.bboxes:
+            print(box)
+            if self.is_point_inside_box(coords, box):
+                print(f"Click coordinates {coords} are inside bounding box {box}")
+
     def video_loop(self):
         for pred, dataset, iterables in self.detect.inference(self.frames):
-            frame = self.detect.process(pred, dataset, iterables)
+            [frame, bboxes] = self.detect.process(pred, dataset, iterables)
+
+            self.bboxes = bboxes
+
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             frame = Image.fromarray(frame)  # convert image for PIL
-            imgtk = ImageTk.PhotoImage(image=frame)  # convert image for tkinter
+            imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
             self.content.imgtk = (
                 imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             )
             self.content.configure(image=imgtk)  # show the image
-            self.after(10, self.video_loop)
+            self.after(5, self.video_loop)
 
             return
 
 
 app = App()
+app.resizable(False, False)
 app.mainloop()
