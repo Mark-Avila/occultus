@@ -82,6 +82,9 @@ class Occultus:
         self.flipped = flipped
         self.nosave = True
 
+    def set_blur_type(self, new_mode: str = "default"):
+        self.blur_type = new_mode
+
     def set_config(self, config: dict):
         self.conf_thres = config.get("conf-thres", self.conf_thres)
         self.iou = config.get("iou", self.iou)
@@ -95,7 +98,6 @@ class Occultus:
         self.nobbox = config.get("nobbox", self.nobbox)
         self.nolabel = config.get("nolabel", self.nolabel)
         self.flipped = config.get("flipped", self.flipped)
-        self.blur_type = config.get("blur_type", self.blur_type)
 
     def initialize(self):
         trace = False

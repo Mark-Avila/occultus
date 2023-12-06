@@ -12,7 +12,7 @@ class App(ctk.CTk):
         self.geometry("720x480")
 
         # Initialize Occultus object and assign to detect
-        self.detect = Occultus("weights/kamukha-v3-demo.pt")
+        self.detect = Occultus("weights/kamukha-v2.pt")
 
         # Set model for streaming (using camera)
         self.detect.load_stream()
@@ -56,16 +56,16 @@ class App(ctk.CTk):
         self.video_loop()
 
     def set_blur(self):
-        self.detect.set_config({"blur_type": "blur"})
+        self.detect.set_blur_type("blur")
 
     def set_pixel(self):
-        self.detect.set_config({"blur_type": "pixel"})
+        self.detect.set_blur_type("pixel")
 
     def set_fill(self):
-        self.detect.set_config({"blur_type": "fill"})
+        self.detect.set_blur_type("fill")
 
     def set_detect(self):
-        self.detect.set_config({"blur_type": "detect"})
+        self.detect.set_blur_type("default")
 
     def is_point_inside_box(self, point, box):
         x, y = point
