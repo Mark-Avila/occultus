@@ -54,7 +54,6 @@ def draw_boxes(
     categories=None,
     confidences=None,
     names=None,
-    id_list=None,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
@@ -66,7 +65,7 @@ def draw_boxes(
 
         color = (0, 0, 255)
 
-        if not nobbox and id not in id_list:
+        if not nobbox:
             cv2.rectangle(img, (x1, y1), (x2, y2), color, tl)
 
             # Calculate the center of the bounding box
@@ -79,7 +78,7 @@ def draw_boxes(
                 img, (center_x, center_y), 3, (0, 255, 0), -1
             )  # Adjust the circle size as needed
 
-        if not nolabel and id not in id_list:
+        if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None
@@ -114,7 +113,6 @@ def blur_boxes(
     categories=None,
     confidences=None,
     names=None,
-    id_list=None,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
@@ -122,7 +120,7 @@ def blur_boxes(
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
 
-        if not nobbox and id not in id_list:
+        if not nobbox:
             # Ensure that bounding box coordinates are valid
             if x1 < 0:
                 x1 = 0
@@ -145,7 +143,7 @@ def blur_boxes(
             # Replace the original region with the blurred region
             img[y1:y2, x1:x2] = blurred_region
 
-        if not nolabel and id not in id_list:
+        if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None
@@ -177,7 +175,6 @@ def fill_boxes(
     categories=None,
     confidences=None,
     names=None,
-    id_list=None,
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
@@ -185,11 +182,11 @@ def fill_boxes(
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
 
-        if not nobbox and id not in id_list:
+        if not nobbox:
             # Fill the bounding box with the specified color
             img[y1:y2, x1:x2] = fill_color
 
-        if not nolabel and id not in id_list:
+        if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None
@@ -220,7 +217,6 @@ def pixelate_boxes(
     categories=None,
     confidences=None,
     names=None,
-    id_list=None,
     intensity=20,
 ):
     for i, box in enumerate(bbox):
@@ -229,7 +225,7 @@ def pixelate_boxes(
         cat = int(categories[i]) if categories is not None else 0
         id = int(identities[i]) if identities is not None else 0
 
-        if not nobbox and id not in id_list:
+        if not nobbox:
             # Ensure that bounding box coordinates are valid
             if x1 < 0:
                 x1 = 0
@@ -257,7 +253,7 @@ def pixelate_boxes(
                     region, (box_width, box_height), interpolation=cv2.INTER_NEAREST
                 )
 
-        if not nolabel and id not in id_list:
+        if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
                 if identities is not None

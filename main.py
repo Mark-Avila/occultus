@@ -1,22 +1,24 @@
 from occultus.core import Occultus
 from tqdm import tqdm
 
-detect = Occultus("weights/kamukha-v3-demo.pt")
+detect = Occultus("weights/kamukha-v2.pt")
 detect.load_video("video/news-1.mp4")
 # detect.load_stream()
 detect.set_config(
     {
         "conf-thres": 0.20,
         "flipped": False,
-        "nolabel": True,
-        "track": True,
-        "blur_type": "pixel",
+        "nolabel": False,
     }
 )
 
-detect.run()
+detect.set_select_mode("specific")
+detect.set_blur_type("pixel")
+detect.append_id(2)
 
-# frames = detect.initialize()
+# detect.run()
+
+frames = detect.initialize()
 
 # total_iterations = frames.numframes()
 
@@ -24,11 +26,12 @@ detect.run()
 #     total=total_iterations, desc="Blurring frames", position=0, leave=True
 # )
 
-# for pred, dataset, iterables in detect.inference(frames):
-#     frame = detect.process(pred, dataset, iterables)
+for pred, dataset, iterables in detect.inference(frames):
+    [frame, dets] = detect.process(pred, dataset, iterables)
 
-#     detect.save_video(frame, iterables)
-#     # detect.show_frame(frame)
+    print(dets)
+
+    detect.save_video(frame, iterables)
 #     progress_bar.update()
 
 # progress_bar.close()

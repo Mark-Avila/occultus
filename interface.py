@@ -20,6 +20,8 @@ class App(ctk.CTk):
         # Set model configurations
         self.detect.set_config({"blur_type": "pixel", "flipped": True})
 
+        self.detect.set_blur_type("default")
+
         # Initialize library (eg. ready library for GPU inferencing)
         self.frames = self.detect.initialize()
 
@@ -67,18 +69,26 @@ class App(ctk.CTk):
     def set_detect(self):
         self.detect.set_blur_type("default")
 
-    def is_point_inside_box(self, point, box):
+    def is_point_inside_box(self, point, box, padding=50):
         x, y = point
-        x_min, y_min, x_max, y_max = box[0]
-        return x_min <= x <= x_max and y_min <= y <= y_max
+        x_min, y_min, x_max, y_max = box
+        return (x_min - padding) <= x <= (x_max + padding) and (
+            y_min - padding
+        ) <= y <= (y_max + padding)
 
     def on_camera_click(self, event):
         # Get the coordinates of the mouse click relative to the label
         coords = (event.x, event.y)
 
         for det in self.dets:
+            print(f"Checking bounding box: {det['box']}")
             if self.is_point_inside_box(coords, det["box"]):
                 print(f"Click coordinates {coords} are inside object ID {det['id']}")
+                continue
+            else:
+                print(
+                    f"Click coordinates {coords} are outside bounding box {det['box']}"
+                )
 
     def video_loop(self):
         for pred, dataset, iterables in self.detect.inference(self.frames):

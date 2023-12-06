@@ -54,6 +54,7 @@ class Occultus:
         self.view_image_test = None
         self.flipped = False
         self.blur_type = "detect"
+        self.select_type = "all"
         self.model = {}
         pass
 
@@ -84,6 +85,16 @@ class Occultus:
 
     def set_blur_type(self, new_mode: str = "default"):
         self.blur_type = new_mode
+
+    def set_select_mode(self, new_mode: str = "all"):
+        if new_mode == "specific" or new_mode == "exclude" or new_mode == "all":
+            self.select_type = new_mode
+        else:
+            raise Exception(
+                "Invalid select mode. Please choose between the following ('all', 'specific', 'exclude')"
+            )
+
+        return
 
     def set_config(self, config: dict):
         self.conf_thres = config.get("conf-thres", self.conf_thres)
@@ -362,28 +373,52 @@ class Occultus:
 
                 blur_function = blur_functions.get(self.blur_type, draw_boxes)
 
-                im0 = blur_function(
-                    im0,
-                    bbox_xyxy,
-                    identities=identities,
-                    categories=categories,
-                    confidences=confidences,
-                    names=names,
-                    nobbox=self.nobbox,
-                    nolabel=self.nolabel,
-                    id_list=self.id_list,
-                )
+                if self.select_type == "exclude":
+                    if identities[0] not in self.id_list:
+                        im0 = blur_function(
+                            im0,
+                            bbox_xyxy,
+                            identities=identities,
+                            categories=categories,
+                            confidences=confidences,
+                            names=names,
+                            nobbox=self.nobbox,
+                            nolabel=self.nolabel,
+                        )
+                elif self.select_type == "specific":
+                    if identities[0] in self.id_list:
+                        im0 = blur_function(
+                            im0,
+                            bbox_xyxy,
+                            identities=identities,
+                            categories=categories,
+                            confidences=confidences,
+                            names=names,
+                            nobbox=self.nobbox,
+                            nolabel=self.nolabel,
+                        )
+                elif self.select_type == "all":
+                    im0 = blur_function(
+                        im0,
+                        bbox_xyxy,
+                        identities=identities,
+                        categories=categories,
+                        confidences=confidences,
+                        names=names,
+                        nobbox=self.nobbox,
+                        nolabel=self.nolabel,
+                    )
 
                 new_preds = None
 
                 if identities is not None:
-                    new_preds = {"id": int(identities[0]), "box": bbox_xyxy}
-
-                bboxes.append(new_preds)
+                    for index, idt in enumerate(identities):
+                        new_preds = {"id": int(idt), "box": bbox_xyxy[index]}
+                        bboxes.append(new_preds)
 
         return [im0, bboxes]
 
-    def show_frame(frame):
+    def show_frame(self, frame):
         cv2.imshow("Face", frame)
         cv2.waitKey(1)  # 1 millisecond
 
