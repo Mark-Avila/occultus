@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         ctk.CTk.__init__(self, *args, **kwargs)
-        self.geometry("720x480")
+        self.geometry("1080x720")
 
         container = ctk.CTkFrame(self)
         container.pack(side="top", fill="both", expand=True)
@@ -30,8 +30,6 @@ class App(ctk.CTk):
 class LandingPage(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTk, controller):
         ctk.CTkFrame.__init__(self, parent)
-
-        controller.geometry("720x480")
 
         # Create a frame to center the content
         center_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -70,7 +68,6 @@ class LandingPage(ctk.CTkFrame):
 class SelectInputPage(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTk, controller):
         ctk.CTkFrame.__init__(self, parent)
-        controller.geometry("720x480")
 
         # Create a frame to center the content
         center_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -116,7 +113,6 @@ class SelectInputPage(ctk.CTkFrame):
 class SelectStreamPage(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTk, controller):
         ctk.CTkFrame.__init__(self, parent)
-        controller.geometry("720x480")
 
         # Create a frame to center the content
         center_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -167,9 +163,10 @@ class SelectStreamPage(ctk.CTkFrame):
 class StreamPage(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTk, controller):
         ctk.CTkFrame.__init__(self, parent)
-        # controller.geometry("1080x720")
 
         self.vid = None
+
+        controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
 
         # Interace related code
         self.content = ctk.CTkLabel(
@@ -177,8 +174,6 @@ class StreamPage(ctk.CTkFrame):
         )
         self.content.grid(row=0, column=1, sticky="nsew")
         self.columnconfigure(1, weight=1)
-
-        controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
 
         self.sidebar = ctk.CTkFrame(self, width=200)
         self.sidebar.grid(row=0, column=0, sticky="ns")

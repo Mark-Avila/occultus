@@ -372,7 +372,12 @@ class Occultus:
                     id_list=self.id_list,
                 )
 
-                bboxes.append(bbox_xyxy)
+                new_preds = None
+
+                if identities is not None:
+                    new_preds = {"id": int(identities[0]), "box": bbox_xyxy}
+
+                bboxes.append(new_preds)
 
         return [im0, bboxes]
 
@@ -593,12 +598,9 @@ class Occultus:
                         categories=categories,
                         confidences=confidences,
                         names=names,
-                        colors=colors,
                         nobbox=self.nobbox,
                         nolabel=self.nolabel,
-                        thickness=self.thickness,
                         id_list=self.id_list,
-                        flipped=self.flipped,
                     )
 
                 print(f"Done. ({(1E3 * (t2 - t1)):.1f}ms)")

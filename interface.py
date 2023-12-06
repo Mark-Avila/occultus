@@ -12,7 +12,7 @@ class App(ctk.CTk):
         self.geometry("720x480")
 
         # Initialize Occultus object and assign to detect
-        self.detect = Occultus("weights/kamukha-v2.pt")
+        self.detect = Occultus("weights/kamukha-v3-demo.pt")
 
         # Set model for streaming (using camera)
         self.detect.load_stream()
@@ -76,16 +76,15 @@ class App(ctk.CTk):
         # Get the coordinates of the mouse click relative to the label
         coords = (event.x, event.y)
 
-        for box in self.bboxes:
-            print(box)
-            if self.is_point_inside_box(coords, box):
-                print(f"Click coordinates {coords} are inside bounding box {box}")
+        for det in self.dets:
+            if self.is_point_inside_box(coords, det["box"]):
+                print(f"Click coordinates {coords} are inside object ID {det['id']}")
 
     def video_loop(self):
         for pred, dataset, iterables in self.detect.inference(self.frames):
-            [frame, bboxes] = self.detect.process(pred, dataset, iterables)
+            [frame, dets] = self.detect.process(pred, dataset, iterables)
 
-            self.bboxes = bboxes
+            self.dets = dets
 
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             frame = Image.fromarray(frame)  # convert image for PIL
