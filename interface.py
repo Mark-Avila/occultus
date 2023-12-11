@@ -58,7 +58,7 @@ class App(ctk.CTk):
         self.video_loop()
 
     def set_blur(self):
-        self.detect.set_blur_type("blur")
+        self.detect.set_blur_type("gaussian")
 
     def set_pixel(self):
         self.detect.set_blur_type("pixel")

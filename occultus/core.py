@@ -36,7 +36,12 @@ sys.path.insert(0, "./occultus")
 
 
 class Occultus:
-    def __init__(self, weights):
+    def __init__(self, weights: str):
+        """Occultus Constructor
+
+        Args:
+            weights (str): Path of weights (pt) for face detection
+        """
         self.weights = weights
         self.conf_thres = 0.25
         self.iou = 0.45
@@ -58,45 +63,154 @@ class Occultus:
         self.model = {}
         pass
 
-    def append_id(self, new_id: int):
+    def append_id(self, new_id: int) -> int:
+        """Append ID value for privacy controls (specific and exclusion)
+
+        Args:
+            new_id (int): New ID
+        """
         self.id_list.append(new_id)
 
-    def pop_id(self, curr_id):
+    def pop_id(self, curr_id: int):
+        """Pops specified from the ID list for privacy controls (specific and exclusion)
+
+        Args:
+            curr_id (int): ID to remove/pop
+        """
         if not self.id_list:
             self.id_list.pop(curr_id)
 
-    def onMouse(event, x, y, flags, param):
-        global posList
-        if event == cv2.EVENT_LBUTTONDOWN:
-            posList.append((x, y))
+    def load_video(self, source: str, img_size: int = 640):
+        """
+        Load a video file for face detection and blurring.
 
-    def load_video(self, source: str, img_size=640):
+        Args:
+            source (str): The path to the video file.
+            img_size (int, optional): The size of each frame for model input. Defaults to 640.
+
+        Raises:
+            FileNotFoundError: If the specified video file is not found.
+            ValueError: If the provided video format is not supported.
+
+        Notes:
+            - This method initializes the video loading process for subsequent face detection and blurring.
+            - Supported video formats are [.mov, .avi, .mp4, .mpg, .mpeg, .m4v, .wmv, .mkv].
+            - The default image size for model input is set to 640 pixels.
+
+        Usage:
+            To load a video, use the following example:
+            ```python
+            instance_name.load_video("path/to/video.mp4", img_size=720)
+            ```
+        """
         self.source = source
         self.img_size = img_size
         self.view_image = False
         self.nosave = False
 
     def load_stream(self, source: str = "0", img_size=640, flipped=False):
+        """
+        Load a video stream or live feed for face detection and blurring.
+
+        Args:
+            source (str, optional):
+            - For video streams: The URL or IP address of the video stream.
+            - For live feed: The camera index (usually 0 for default camera). Defaults to "0".\n
+            img_size (int, optional): The size of each frame for model input. Defaults to 640.
+            flipped (bool, optional): Flag to enable/disable horizontal flipping of each frame. Defaults to False.
+
+        Raises:
+            ValueError: If the provided video stream source is invalid or if the camera index is invalid.
+
+        Notes:
+            - This method initializes the video stream loading process for subsequent face detection and blurring.
+            - If using a video stream, provide the URL or IP address as the 'source' parameter.
+            - If using a live feed, provide the camera index as the 'source' parameter.
+            - The default image size for model input is set to 640 pixels.
+
+        Usage:
+            To load a video stream, use the following example:
+            ```python
+            instance_name.load_stream("http://example.com/stream", img_size=720, flipped=True)
+            ```
+
+            To load a live feed from the default camera, use the following example:
+            ```python
+            instance_name.load_stream("0", img_size=720, flipped=True)
+            ```
+        """
         self.source = source
         self.img_size = img_size
         self.view_image = True
         self.flipped = flipped
         self.nosave = True
 
-    def set_blur_type(self, new_mode: str = "default"):
-        self.blur_type = new_mode
+    def set_blur_type(self, new_type: str = "default"):
+        """Set type of blurring to be applied (default, gaussian, pixel, fill)
 
-    def set_select_mode(self, new_mode: str = "all"):
-        if new_mode == "specific" or new_mode == "exclude" or new_mode == "all":
-            self.select_type = new_mode
+        Args:
+            new_type (str, optional): Blurring type. Defaults to "default".
+        """
+        if (
+            new_type == "default"
+            or new_type == "gaussian"
+            or new_type == "pixel"
+            or new_type == "fill"
+        ):
+            self.blur_type = new_type
         else:
-            raise Exception(
-                "Invalid select mode. Please choose between the following ('all', 'specific', 'exclude')"
+            raise ValueError(
+                "Invalid censor type. Please choose between the following: [default, gaussian, pixel, fill]"
+            )
+
+    def set_privacy_control(self, new_type: str = "all"):
+        """Set privacy control
+
+        Args:
+            new_type (str, optional): _description_. Defaults to "all".
+
+        Raises:
+            ValueError: _description_
+        """
+        if new_type == "specific" or new_type == "exclude" or new_type == "all":
+            self.select_type = new_type
+        else:
+            raise ValueError(
+                "Invalid select mode. Please choose between the following: ['all', 'specific', 'exclude']"
             )
 
         return
 
     def set_config(self, config: dict):
+        """
+        Set configuration parameters based on the values provided in the input dictionary.
+
+        Parameters:
+        - config (dict): A dictionary containing configuration parameter values.
+
+        Default values:
+        ```python
+        config = {
+            "conf-thres" (float): 0.25,
+            "iou" (float): 0.45,
+            "device" (str): "",
+            "nosave" (bool): False,
+            "output" (str): "output",
+            "name" (str): "vid",
+            "track" (bool): False,
+            "show-fps" (bool): False,
+            "thickness" (int): 2,
+            "nobbox" (bool): False,
+            "nolabel" (bool): True,
+            "flipped" (bool): False
+        }
+
+        instance_of_your_class.set_config(config)
+        ```
+
+        Note:
+        - If a parameter is not present in the input dictionary, the default value is retained.
+        """
         self.conf_thres = config.get("conf-thres", self.conf_thres)
         self.iou = config.get("iou", self.iou)
         self.device = config.get("device", self.device)
@@ -111,6 +225,31 @@ class Occultus:
         self.flipped = config.get("flipped", self.flipped)
 
     def initialize(self):
+        """
+        Initialize the object detection system.
+
+        This method performs various initialization tasks, including setting up configuration parameters,
+        loading the detection model, configuring the data loader, and preparing the output directory.
+
+        Example:
+        ```python
+        occultus = Occultus("path/to/weights")
+
+        frames = occultus.initialize() # Must be called before inference, process, save video methods
+
+        for pred, dataset, iterables in occultus.inference(frames):
+            processed_preds = occultus.process(pred, dataset, iterables)
+            occultus.save_video(frame, iterables)
+
+        #... rest of the code
+        ```
+
+        Returns:
+        - dataset: The initialized dataset for processing video frames.
+
+        Note:
+        - This method is MUST be called once before starting the object detection process.
+        """
         trace = False
         self.model["augment"] = False
         self.model["sort_tracker"] = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
@@ -186,51 +325,42 @@ class Occultus:
         return dataset
 
     def inference(self, dataset):
-        old_img_w = old_img_h = self.model["imgsz"]
-        old_img_b = 1
-        for path, img, im0s, vid_cap in dataset:
-            img = torch.from_numpy(img).to(self.model["device"])
-            img = img.half() if self.model["half"] else img.float()  # uint8 to fp16/32
-            img /= 255.0  # 0 - 255 to 0.0 - 1.0
-            if img.ndimension() == 3:
-                img = img.unsqueeze(0)
+        """
+        Perform object detection inference on the given dataset.
 
-            # Warmup
-            if self.model["device"].type != "cpu" and (
-                old_img_b != img.shape[0]
-                or old_img_h != img.shape[2]
-                or old_img_w != img.shape[3]
-            ):
-                old_img_b = img.shape[0]
-                old_img_h = img.shape[2]
-                old_img_w = img.shape[3]
-                for i in range(3):
-                    self.model["model"](img, augment=self.model["augment"])[0]
+        This method iterates over the frames in the provided dataset, processes each frame using the
+        pre-loaded detection model, and yields the predictions along with additional information for each frame.
 
-            # Inference
-            # t1 = time_synchronized()
-            pred = self.model["model"](img, augment=self.model["augment"])[0]
-            # t2 = time_synchronized()
+        Parameters:
+        - dataset: The dataset containing frames for object detection.
 
-            # Apply NMS
-            pred = non_max_suppression(
-                pred,
-                self.conf_thres,
-                self.iou,
-                classes=0,
-                agnostic=False,
-            )
-            # t3 = time_synchronized()
+        Yields:
+        - pred: List of dictionaries containing bounding box predictions for detected objects.
+        - dataset: The original dataset.
+        - iterables: Dictionary containing additional information for the current frame, crucial for using the ```process``` method, including:
+            - "path": Path to the image or video file.
+            - "im0s": Original image.
+            - "img": Processed image tensor.
+            - "vid_cap": Video capture object.
 
-            # Apply Classifier
-            if self.model["classify"]:
-                pred = apply_classifier(pred, self.model["modelc"], img, im0s)
+        Example:
+        ```python
+        occultus = Occultus("path/to/weights")
 
-            iterables = {"path": path, "im0s": im0s, "img": img, "vid_cap": vid_cap}
+        frames = occultus.initialize()
 
-            yield pred, dataset, iterables
+        for pred, dataset, iterables in frames.inference(frames):
+            processed_preds = frames.process(pred, dataset, iterables)
+            frames.save_video(frame, iterables)
 
-    def inference(self, dataset):
+        #... rest of the code
+        ```
+
+        Note:
+        - The `inference` method uses the pre-loaded model from ```initialize``` method to perform object detection on each frame
+        in the dataset. It yields the predictions, the original dataset, and additional information
+        for further processing.
+        """
         old_img_w = old_img_h = self.model["imgsz"]
         old_img_b = 1
         for path, img, im0s, vid_cap in dataset:
@@ -276,6 +406,47 @@ class Occultus:
             yield pred, dataset, iterables
 
     def process(self, pred, dataset, iterables):
+        """
+        Process object detection predictions and generate visualizations.
+
+        This method takes the predictions from the object detection model, processes the detections,
+        tracks objects using the SORT tracker, applies blurring or other visual effects based on the
+        configuration, and returns the processed image along with information about detected objects.
+
+        Parameters:
+        - pred: List of dictionaries containing bounding box predictions for detected objects.
+        - dataset: The original dataset.
+        - iterables: Dictionary containing additional information for the current frame, including:
+            - "path": Path to the image or video file.
+            - "im0s": Original image.
+            - "img": Processed image tensor.
+            - "vid_cap": Video capture object.
+
+        Returns:
+        - result: A list containing the processed image (numpy array) and a list of dictionaries,
+        each containing information about a detected object, including its identity and bounding box.
+
+        Example:
+        ```python
+        occultus = Occultus("path/to/weights")
+
+        frames = occultus.initialize()
+
+        for pred, dataset, iterables in occultus.inference(frames):
+            processed_preds = occultus.process(pred, dataset, iterables) //OR
+            [frame, dets] = occultus.process(pred, dataset, iterables) //OR
+
+            occultus.save_video(frame, iterables) # For video
+            occultus.show_frame(frame) # For streams
+
+        #... rest of the code
+        ```
+
+        Note:
+        - The `process` method applies tracking, visualization, and blurring effects based on the
+        configuration settings. It returns the processed image and a list of dictionaries containing
+        information about detected objects, including their identities and bounding boxes.
+        """
         names = (
             self.model["model"].names
             if hasattr(self.model["model"], "module")
@@ -365,7 +536,7 @@ class Occultus:
                     confidences = dets_to_sort[:, 4]
 
                 blur_functions = {
-                    "blur": blur_boxes,
+                    "gaussian": blur_boxes,
                     "pixel": pixelate_boxes,
                     "fill": fill_boxes,
                     "detect": draw_boxes,
@@ -419,14 +590,69 @@ class Occultus:
         return [im0, bboxes]
 
     def show_frame(self, frame):
+        """
+        Display the given frame in a window titled "Face".
+
+        Parameters:
+        - frame: The frame (image) to be displayed.
+
+        Example:
+        ```python
+        instance_of_your_class.show_frame(frame)
+        ```
+
+        Note:
+        - This method uses OpenCV to show the provided frame in a window titled "Face".
+        - The window is updated every millisecond.
+        """
         cv2.imshow("Face", frame)
         cv2.waitKey(1)  # 1 millisecond
 
     def save_img(self, frame):
+        """
+        Save the given frame as an image file.
+
+        Parameters:
+        - frame: The frame (image) to be saved.
+
+        Example:
+        ```python
+        instance_of_your_class.save_img(frame)
+        ```
+
+        Note:
+        - This method saves the provided frame as an image file in the directory specified by the
+        model's `save_path` attribute.
+        - The file format is determined by the file extension in the `save_path`.
+        - A message indicating the saved path is printed to the console.
+        """
         cv2.imwrite(self.model["save_path"], frame)
         print(f"The image with the result is saved in: {self.model['save_path']}")
 
     def save_video(self, frame, iterables):
+        """
+        Save the given frame as part of a video file.
+
+        Parameters:
+        - frame: The frame (image) to be included in the video.
+        - iterables: A dictionary containing iterable items such as the video capture object.
+
+        Example:
+        ```python
+        instance_of_your_class.save_video(frame, iterables)
+        ```
+
+        Note:
+        - This method appends the provided frame to a video file specified by the model's
+        `save_path` attribute.
+        - If the video file is a new one, it initializes a new video writer and releases the
+        previous one if it exists.
+        - The file format is determined by the file extension in the `save_path`.
+        - The video's frames per second (fps), width, and height are determined based on the video
+        capture object or default values for a stream.
+        - If the video writer is not initialized, this method creates a new video writer and writes
+        the frame to the video file.
+        """
         if self.model["vid_path"] != self.model["save_path"]:  # new video
             self.model["vid_path"] = self.model["save_path"]
             if isinstance(self.model["vid_writer"], cv2.VideoWriter):
@@ -444,6 +670,27 @@ class Occultus:
         self.model["vid_writer"].write(frame)
 
     def run(self, log=True, ext_frame=None):
+        """
+        Run object detection on the specified source (image, video, or webcam stream).
+
+        This method initializes the object detection model, performs inference on each frame
+        of the provided source, applies tracking, visualization, and blurring effects, and optionally
+        saves the results. The processed frames are displayed if the `view_image` option is enabled.
+
+        Parameters:
+        - log (bool): Whether to enable logging during the detection process.
+        - ext_frame: An optional external frame for displaying the processed frames.
+
+        Example:
+        ```python
+        instance_of_your_class.run(log=True, ext_frame=external_frame)
+        ```
+
+        Note:
+        - The `run` method sets up the necessary components, including the model, dataloader, and
+        visualization settings. It then processes each frame of the specified source, applies
+        object detection, tracking, and visualization, and optionally saves the results.
+        """
         trace = False
         augment = False
         sort_tracker = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
