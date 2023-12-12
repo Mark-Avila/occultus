@@ -561,41 +561,60 @@ class Occultus:
 
                 blur_function = blur_functions.get(self.blur_type, draw_boxes)
 
-                if self.select_type == "exclude":
-                    if identities[0] not in self.id_list:
-                        im0 = blur_function(
-                            im0,
-                            bbox_xyxy,
-                            identities=identities,
-                            categories=categories,
-                            confidences=confidences,
-                            names=names,
-                            nobbox=self.nobbox,
-                            nolabel=self.nolabel,
-                        )
-                elif self.select_type == "specific":
-                    if identities.any() and identities[0] in self.id_list:
-                        im0 = blur_function(
-                            im0,
-                            bbox_xyxy,
-                            identities=identities,
-                            categories=categories,
-                            confidences=confidences,
-                            names=names,
-                            nobbox=self.nobbox,
-                            nolabel=self.nolabel,
-                        )
-                elif self.select_type == "all":
-                    im0 = blur_function(
-                        im0,
-                        bbox_xyxy,
-                        identities=identities,
-                        categories=categories,
-                        confidences=confidences,
-                        names=names,
-                        nobbox=self.nobbox,
-                        nolabel=self.nolabel,
-                    )
+                im0 = blur_function(
+                    im0,
+                    bbox_xyxy,
+                    ids=identities,
+                    ids_list=self.id_list,
+                    privacy=self.select_type,
+                    categories=categories,
+                    confidences=confidences,
+                    names=names,
+                    nobbox=self.nobbox,
+                    nolabel=self.nolabel,
+                )
+
+                # if self.select_type == "exclude":
+                #     if identities[0] not in self.id_list:
+                #         im0 = blur_function(
+                #             im0,
+                #             bbox_xyxy,
+                #             ids=identities,
+                #             ids_list=self.id_list,
+                #             privacy=self.select_type,
+                #             categories=categories,
+                #             confidences=confidences,
+                #             names=names,
+                #             nobbox=self.nobbox,
+                #             nolabel=self.nolabel,
+                #         )
+                # elif self.select_type == "specific":
+                #     if identities.any() and identities[0] in self.id_list:
+                #         im0 = blur_function(
+                #             im0,
+                #             bbox_xyxy,
+                #             ids=identities,
+                #             ids_list=self.id_list,
+                #             privacy=self.select_type,
+                #             categories=categories,
+                #             confidences=confidences,
+                #             names=names,
+                #             nobbox=self.nobbox,
+                #             nolabel=self.nolabel,
+                #         )
+                # elif self.select_type == "all":
+                #     im0 = blur_function(
+                #         im0,
+                #         bbox_xyxy,
+                #         ids=identities,
+                #         ids_list=self.id_list,
+                #         privacy=self.select_type,
+                #         categories=categories,
+                #         confidences=confidences,
+                #         names=names,
+                #         nobbox=self.nobbox,
+                #         nolabel=self.nolabel,
+                #     )
 
                 new_preds = None
 
@@ -895,7 +914,9 @@ class Occultus:
                     im0 = draw_boxes(
                         im0,
                         bbox_xyxy,
-                        identities=identities,
+                        ids=identities,
+                        ids_list=self.id_list,
+                        privacy=self.select_type,
                         categories=categories,
                         confidences=confidences,
                         names=names,

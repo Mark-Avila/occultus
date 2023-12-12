@@ -45,13 +45,29 @@ def hist2d(x, y, n=100):
     return np.log(hist[xidx, yidx])
 
 
+def apply_boxes(img, x1, y1, x2, y2, color, tl):
+    cv2.rectangle(img, (x1, y1), (x2, y2), color, tl)
+
+    # Calculate the center of the bounding box
+    center_x = (x1 + x2) // 2
+    center_y = (y1 + y2) // 2
+
+    # Draw a dot (filled circle) at the center
+    # (0, 255, 0) green
+    cv2.circle(
+        img, (center_x, center_y), 3, (0, 255, 0), -1
+    )  # Adjust the circle size as needed
+
+
 def draw_boxes(
     img,
     bbox,
     nobbox=None,
     nolabel=None,
-    identities=None,
     categories=None,
+    ids=None,
+    ids_list=[],
+    privacy="all",
     confidences=None,
     names=None,
 ):
@@ -60,28 +76,24 @@ def draw_boxes(
         tl = round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1
 
         cat = int(categories[i]) if categories is not None else 0
-        id = int(identities[i]) if identities is not None else 0
+        id = int(ids[i]) if ids is not None else 0
         # conf = confidences[i] if confidences is not None else 0
 
         color = (0, 0, 255)
 
-        if not nobbox:
-            cv2.rectangle(img, (x1, y1), (x2, y2), color, tl)
+        if not nobbox and id in ids_list and privacy == "specific":
+            apply_boxes(img, x1, y1, x2, y2, color, tl)
 
-            # Calculate the center of the bounding box
-            center_x = (x1 + x2) // 2
-            center_y = (y1 + y2) // 2
+        elif not nobbox and id not in ids_list and privacy == "exclude":
+            apply_boxes(img, x1, y1, x2, y2, color, tl)
 
-            # Draw a dot (filled circle) at the center
-            # (0, 255, 0) green
-            cv2.circle(
-                img, (center_x, center_y), 3, (0, 255, 0), -1
-            )  # Adjust the circle size as needed
+        elif not nobbox and privacy == "all":
+            apply_boxes(img, x1, y1, x2, y2, color, tl)
 
         if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
-                if identities is not None
+                if ids is not None
                 else f"{names[cat]} {confidences[i]:.2f}"
             )
             tf = max(tl - 1, 1)  # font thickness
@@ -103,13 +115,37 @@ def draw_boxes(
     return img
 
 
+def apply_blur(img, x1, y1, x2, y2, intensity):
+    # Ensure that bounding box coordinates are valid
+    if x1 < 0:
+        x1 = 0
+    if y1 < 0:
+        y1 = 0
+    if x2 > img.shape[1]:
+        x2 = img.shape[1]
+    if y2 > img.shape[0]:
+        y2 = img.shape[0]
+
+    # Create a mask for the region inside the bounding box
+    mask = np.zeros_like(img)
+    mask[y1:y2, x1:x2] = img[y1:y2, x1:x2]
+
+    # Apply Gaussian blur only to the region inside the bounding box
+    blurred_region = cv2.GaussianBlur(mask[y1:y2, x1:x2], (intensity, intensity), 0)
+
+    # Replace the original region with the blurred region
+    img[y1:y2, x1:x2] = blurred_region
+
+
 def blur_boxes(
     img,
     bbox,
     intensity=51,
     nobbox=None,
     nolabel=None,
-    identities=None,
+    ids=None,
+    ids_list=[],
+    privacy="all",
     categories=None,
     confidences=None,
     names=None,
@@ -118,35 +154,21 @@ def blur_boxes(
         x1, y1, x2, y2 = [int(i) for i in box]
 
         cat = int(categories[i]) if categories is not None else 0
-        id = int(identities[i]) if identities is not None else 0
+        id = int(ids[i]) if ids is not None else 0
 
-        if not nobbox:
-            # Ensure that bounding box coordinates are valid
-            if x1 < 0:
-                x1 = 0
-            if y1 < 0:
-                y1 = 0
-            if x2 > img.shape[1]:
-                x2 = img.shape[1]
-            if y2 > img.shape[0]:
-                y2 = img.shape[0]
+        if not nobbox and id in ids_list and privacy == "specific":
+            apply_blur(img, x1, y1, x2, y2, intensity)
 
-            # Create a mask for the region inside the bounding box
-            mask = np.zeros_like(img)
-            mask[y1:y2, x1:x2] = img[y1:y2, x1:x2]
+        elif not nobbox and id not in ids_list and privacy == "exclude":
+            apply_blur(img, x1, y1, x2, y2, intensity)
 
-            # Apply Gaussian blur only to the region inside the bounding box
-            blurred_region = cv2.GaussianBlur(
-                mask[y1:y2, x1:x2], (intensity, intensity), 0
-            )
-
-            # Replace the original region with the blurred region
-            img[y1:y2, x1:x2] = blurred_region
+        elif not nobbox and privacy == "all":
+            apply_blur(img, x1, y1, x2, y2, intensity)
 
         if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
-                if identities is not None
+                if ids is not None
                 else f"{names[cat]} {confidences[i]:.2f}"
             )
 
@@ -171,8 +193,10 @@ def fill_boxes(
     fill_color=(0, 0, 0),
     nobbox=None,
     nolabel=None,
-    identities=None,
     categories=None,
+    ids=None,
+    ids_list=[],
+    privacy="all",
     confidences=None,
     names=None,
 ):
@@ -180,16 +204,21 @@ def fill_boxes(
         x1, y1, x2, y2 = [int(i) for i in box]
 
         cat = int(categories[i]) if categories is not None else 0
-        id = int(identities[i]) if identities is not None else 0
+        id = int(ids[i]) if ids is not None else 0
 
-        if not nobbox:
-            # Fill the bounding box with the specified color
+        if not nobbox and id in ids_list and privacy == "specific":
+            img[y1:y2, x1:x2] = fill_color
+
+        elif not nobbox and id not in ids_list and privacy == "exclude":
+            img[y1:y2, x1:x2] = fill_color
+
+        elif not nobbox and privacy == "all":
             img[y1:y2, x1:x2] = fill_color
 
         if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
-                if identities is not None
+                if ids is not None
                 else f"{names[cat]} {confidences[i]:.2f}"
             )
 
@@ -208,13 +237,44 @@ def fill_boxes(
     return img
 
 
+def apply_pixel(img, x1, y1, x2, y2, intensity):
+    # Ensure that bounding box coordinates are valid
+    if x1 < 0:
+        x1 = 0
+    if y1 < 0:
+        y1 = 0
+    if x2 > img.shape[1]:
+        x2 = img.shape[1]
+    if y2 > img.shape[0]:
+        y2 = img.shape[0]
+
+    # Calculate the pixel size based on the size of the bounding box
+    box_width = x2 - x1
+    box_height = y2 - y1
+
+    # Ensure that the bounding box has valid dimensions
+    if box_width > 0 and box_height > 0:
+        pixel_size = max(1, int(max(box_width, box_height) / intensity))
+
+        # Pixelate the region inside the bounding box
+        region = img[y1:y2, x1:x2]
+        region = cv2.resize(
+            region, (pixel_size, pixel_size), interpolation=cv2.INTER_NEAREST
+        )
+        img[y1:y2, x1:x2] = cv2.resize(
+            region, (box_width, box_height), interpolation=cv2.INTER_NEAREST
+        )
+
+
 def pixelate_boxes(
     img,
     bbox,
     nobbox=None,
     nolabel=None,
-    identities=None,
     categories=None,
+    ids=None,
+    ids_list=[],
+    privacy="all",
     confidences=None,
     names=None,
     intensity=20,
@@ -223,40 +283,21 @@ def pixelate_boxes(
         x1, y1, x2, y2 = [int(i) for i in box]
 
         cat = int(categories[i]) if categories is not None else 0
-        id = int(identities[i]) if identities is not None else 0
+        id = int(ids[i]) if ids is not None else 0
 
-        if not nobbox:
-            # Ensure that bounding box coordinates are valid
-            if x1 < 0:
-                x1 = 0
-            if y1 < 0:
-                y1 = 0
-            if x2 > img.shape[1]:
-                x2 = img.shape[1]
-            if y2 > img.shape[0]:
-                y2 = img.shape[0]
+        if not nobbox and id in ids_list and privacy == "specific":
+            apply_pixel(img, x1, y1, x2, y2, intensity)
 
-            # Calculate the pixel size based on the size of the bounding box
-            box_width = x2 - x1
-            box_height = y2 - y1
+        elif not nobbox and id not in ids_list and privacy == "exclude":
+            apply_pixel(img, x1, y1, x2, y2, intensity)
 
-            # Ensure that the bounding box has valid dimensions
-            if box_width > 0 and box_height > 0:
-                pixel_size = max(1, int(max(box_width, box_height) / intensity))
-
-                # Pixelate the region inside the bounding box
-                region = img[y1:y2, x1:x2]
-                region = cv2.resize(
-                    region, (pixel_size, pixel_size), interpolation=cv2.INTER_NEAREST
-                )
-                img[y1:y2, x1:x2] = cv2.resize(
-                    region, (box_width, box_height), interpolation=cv2.INTER_NEAREST
-                )
+        elif not nobbox and privacy == "all":
+            apply_pixel(img, x1, y1, x2, y2, intensity)
 
         if not nolabel:
             label = (
                 str(id) + ":" + names[cat]
-                if identities is not None
+                if ids is not None
                 else f"{names[cat]} {confidences[i]:.2f}"
             )
 
