@@ -7,6 +7,7 @@ import torch
 import torch.backends.cudnn as cudnn
 import numpy as np
 import random
+import datetime
 
 from PIL import ImageTk
 from occultus.models.experimental import attempt_load
@@ -47,8 +48,8 @@ class Occultus:
         self.iou = 0.45
         self.device = ""
         self.nosave = False
-        self.output = "output/detect"
-        self.name = "inf"
+        self.output = "output"
+        self.name = datetime.datetime.now().strftime("%b_%d_%Y-%H_%M_%S_")
         self.track = False
         self.show_fps = False
         self.thickness = 2
@@ -164,13 +165,29 @@ class Occultus:
             )
 
     def set_privacy_control(self, new_type: str = "all"):
-        """Set privacy control
+        """
+        Set the privacy control mode for object detection results.
 
-        Args:
-            new_type (str, optional): _description_. Defaults to "all".
+        Parameters:
+        - new_type (str): The privacy control mode. It can be one of the following:
+        - 'all': Apply privacy control to all detected objects.
+        - 'specific': Apply privacy control only to objects specified in the `id_list`.
+        - 'exclude': Exclude objects specified in the `id_list` from privacy control.
+
+        Example:
+        ```python
+        instance_of_your_class.set_privacy_control(new_type="specific")
+        ```
 
         Raises:
-            ValueError: _description_
+        - ValueError: If an invalid `new_type` is provided. Valid options are ['all', 'specific', 'exclude'].
+
+        Note:
+        - This method allows you to set the privacy control mode for object detection results.
+        - The privacy control mode determines whether to apply blurring or other effects to all detected
+        objects, specific objects, or exclude specific objects.
+        - The `new_type` parameter should be one of the valid options: 'all', 'specific', or 'exclude'.
+        - If an invalid option is provided, a `ValueError` is raised.
         """
         if new_type == "specific" or new_type == "exclude" or new_type == "all":
             self.select_type = new_type
@@ -557,7 +574,7 @@ class Occultus:
                             nolabel=self.nolabel,
                         )
                 elif self.select_type == "specific":
-                    if identities[0] in self.id_list:
+                    if identities.any() and identities[0] in self.id_list:
                         im0 = blur_function(
                             im0,
                             bbox_xyxy,

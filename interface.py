@@ -12,13 +12,15 @@ class App(ctk.CTk):
         self.geometry("720x480")
 
         # Initialize Occultus object and assign to detect
-        self.detect = Occultus("weights/kamukha-v2.pt")
+        self.detect = Occultus("weights/kamukha-v3.pt")
 
         # Set model for streaming (using camera)
         self.detect.load_stream()
 
         # Set model configurations
-        self.detect.set_config({"blur_type": "pixel", "flipped": True})
+        self.detect.set_config(
+            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
+        )
 
         self.detect.set_blur_type("default")
 
@@ -52,10 +54,23 @@ class App(ctk.CTk):
         )
         detect_button.pack(padx=20, pady=5)
 
+        privacy_options = ["all", "specific", "exclude"]
+
+        select_privacy = ctk.CTkOptionMenu(
+            master=self.sidebar,
+            values=privacy_options,
+            command=self.on_privacy_select,
+        )
+
+        select_privacy.pack(padx=20, pady=5)
+
         self.content.bind("<Button-1>", self.on_camera_click)
 
         # Start detection
         self.video_loop()
+
+    def on_privacy_select(self, value: str):
+        self.detect.set_privacy_control(value)
 
     def set_blur(self):
         self.detect.set_blur_type("gaussian")
@@ -84,6 +99,7 @@ class App(ctk.CTk):
             print(f"Checking bounding box: {det['box']}")
             if self.is_point_inside_box(coords, det["box"]):
                 print(f"Click coordinates {coords} are inside object ID {det['id']}")
+                self.detect.append_id(det["id"])
                 continue
             else:
                 print(
