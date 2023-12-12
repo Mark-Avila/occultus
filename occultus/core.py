@@ -1,13 +1,26 @@
 """
-Author: Mark Christian A. Avila
+Name: Occultus
 Date: December 12, 2023
-Description: This script does XYZ.
+File Description: The fundamental features and components of Occultus.
+Version: 0.1
 
-Additional information about the script can be added here.
+Developer/Author: Mark Christian A. Avila
+QA tester: John Remmon G. Castor
+Section/Course: BSCS-NS-4B
+Description: Face detection library with privacy controls: blurring, exclusion, and specific face detection. Capstone Project for Bachelor of Science in Computer Science (Non-stem)
+
+Modification History:
+- December 12, 2023 (ver 0.1):
+    - First working version that has the project requirements
+        - All, Specific, and Exclusion censoring
+        - Click/Select boxes to apply privacy controls
+        - Able to Upload videos and use live feed 
+    - Censor type handling
+    - Privacy control handling
+    - Documentation
+    - Seperated model initialization, inference, and post process into methods
 """
 
-
-import argparse
 import time
 from pathlib import Path
 
