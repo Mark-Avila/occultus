@@ -42,6 +42,12 @@ class Occultus:
 
         Args:
             weights (str): Path of weights (pt) for face detection
+
+        Example:
+        ```
+        from occultus.core import Occultus
+        occultus = Occultus("path/to/weights")
+        ```
         """
         self.weights = weights
         self.conf_thres = 0.25
@@ -70,16 +76,22 @@ class Occultus:
         Args:
             new_id (int): New ID
         """
-        self.id_list.append(new_id)
+        if isinstance(new_id, int):
+            self.id_list.append(new_id)
+        else:
+            raise ValueError("Invalid ID to append, must be of type integer")
 
-    def pop_id(self, curr_id: int):
+    def pop_id(self, id: int):
         """Pops specified from the ID list for privacy controls (specific and exclusion)
 
         Args:
-            curr_id (int): ID to remove/pop
+            id (int): ID to remove/pop
         """
-        if not self.id_list:
-            self.id_list.pop(curr_id)
+        if isinstance(id, int):
+            if not self.id_list:
+                self.id_list.pop(id)
+        else:
+            raise ValueError("Invalid ID to pop, must be of type integer")
 
     def load_video(self, source: str, img_size: int = 640):
         """
@@ -104,6 +116,12 @@ class Occultus:
             instance_name.load_video("path/to/video.mp4", img_size=720)
             ```
         """
+
+        if isinstance(source, str) is False:
+            raise ValueError("Invalid source value, must be of type string")
+        if isinstance(img_size, int) is False:
+            raise ValueError("Invalid img_size value, must be of type integer")
+
         self.source = source
         self.img_size = img_size
         self.view_image = False
@@ -140,6 +158,14 @@ class Occultus:
             instance_name.load_stream("0", img_size=720, flipped=True)
             ```
         """
+
+        if isinstance(source, str) is False:
+            raise ValueError("Invalid source value, must be of type string")
+        if isinstance(img_size, int) is False:
+            raise ValueError("Invalid img_size value, must be of type integer")
+        if isinstance(flipped, bool) is False:
+            raise ValueError("Invalid flipped value, must be of type boolean")
+
         self.source = source
         self.img_size = img_size
         self.view_image = True
@@ -573,48 +599,6 @@ class Occultus:
                     nobbox=self.nobbox,
                     nolabel=self.nolabel,
                 )
-
-                # if self.select_type == "exclude":
-                #     if identities[0] not in self.id_list:
-                #         im0 = blur_function(
-                #             im0,
-                #             bbox_xyxy,
-                #             ids=identities,
-                #             ids_list=self.id_list,
-                #             privacy=self.select_type,
-                #             categories=categories,
-                #             confidences=confidences,
-                #             names=names,
-                #             nobbox=self.nobbox,
-                #             nolabel=self.nolabel,
-                #         )
-                # elif self.select_type == "specific":
-                #     if identities.any() and identities[0] in self.id_list:
-                #         im0 = blur_function(
-                #             im0,
-                #             bbox_xyxy,
-                #             ids=identities,
-                #             ids_list=self.id_list,
-                #             privacy=self.select_type,
-                #             categories=categories,
-                #             confidences=confidences,
-                #             names=names,
-                #             nobbox=self.nobbox,
-                #             nolabel=self.nolabel,
-                #         )
-                # elif self.select_type == "all":
-                #     im0 = blur_function(
-                #         im0,
-                #         bbox_xyxy,
-                #         ids=identities,
-                #         ids_list=self.id_list,
-                #         privacy=self.select_type,
-                #         categories=categories,
-                #         confidences=confidences,
-                #         names=names,
-                #         nobbox=self.nobbox,
-                #         nolabel=self.nolabel,
-                #     )
 
                 new_preds = None
 

@@ -222,7 +222,7 @@ class StreamPage(ctk.CTkFrame):
 
     def on_close(self, parent: ctk.CTk):
         # Release the video feed and close the window
-        if self.vid.isOpened():
+        if self.vid and self.vid.isOpened():
             self.vid.release()
         parent.destroy()
 
