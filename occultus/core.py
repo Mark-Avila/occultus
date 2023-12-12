@@ -1,3 +1,12 @@
+"""
+Author: Mark Christian A. Avila
+Date: December 12, 2023
+Description: This script does XYZ.
+
+Additional information about the script can be added here.
+"""
+
+
 import argparse
 import time
 from pathlib import Path
