@@ -1,12 +1,12 @@
 from occultus.core import Occultus
 from tqdm import tqdm
 
-detect = Occultus("weights/kamukha-v2.pt")
+detect = Occultus("weights/kamukha-v3.pt")
 detect.load_video("video/news-1.mp4")
 # detect.load_stream()
 detect.set_config(
     {
-        "conf-thres": 0.20,
+        "conf-thres": 0.50,
         "flipped": False,
         "nolabel": False,
     }
