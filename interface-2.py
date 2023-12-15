@@ -166,13 +166,17 @@ class StreamPage(ctk.CTkFrame):
 
         self.vid = None
 
+        CONTENT_PADDING = 140
+        RECORD_BTN_SIZE = 60
+
         controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
 
-        # Interace related code
-        self.content = ctk.CTkLabel(
-            self, fg_color="#000000", text="", width=640, height=480
-        )
+        # self.content = ctk.CTkLabel(
+        #     self, fg_color="#000000", text="", width=640, height=480
+        # )
+        self.content = ctk.CTkFrame(self)
         self.content.grid(row=0, column=1, sticky="nsew")
+
         self.columnconfigure(1, weight=1)
 
         self.sidebar = ctk.CTkFrame(self, width=200)
@@ -180,21 +184,70 @@ class StreamPage(ctk.CTkFrame):
 
         self.rowconfigure(0, weight=1)
 
-        blur_button = ctk.CTkButton(self.sidebar, text="Blur", command=self.start)
-        blur_button.pack(padx=20, pady=5)
+        self.feed = ctk.CTkLabel(
+            self.content, fg_color="#000000", text="", width=640, height=480
+        )
+        self.feed.pack(padx=CONTENT_PADDING, pady=(40, 0))
 
-        pixel_button = ctk.CTkButton(self.sidebar, text="Pixel", command=self.start)
-        pixel_button.pack(padx=20, pady=5)
+        wrapper = ctk.CTkFrame(self.content, fg_color="transparent")
+        wrapper.pack(fill="x", padx=CONTENT_PADDING, pady=(40, 0))
 
-        fill_button = ctk.CTkButton(self.sidebar, text="Fill", command=self.start)
-        fill_button.pack(padx=20, pady=5)
+        record_btn = ctk.CTkButton(
+            wrapper,
+            corner_radius=50,
+            width=RECORD_BTN_SIZE,
+            height=RECORD_BTN_SIZE,
+            text=">",
+            command=self.start,
+        )
+        record_btn.pack(side=ctk.LEFT)
 
-        detect_button = ctk.CTkButton(self.sidebar, text="Detect", command=self.start)
-        detect_button.pack(padx=20, pady=5)
+        time_lbl = ctk.CTkLabel(
+            wrapper, text="0:00", font=ctk.CTkFont(weight="bold", size=24)
+        )
+        time_lbl.pack(side=ctk.LEFT, padx=(40, 0))
 
-        self.content.bind("<Button-1>", self.on_camera_click)
+        censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
+        censor_label.pack(pady=5)
 
-    def on_camera_click(self, event):
+        censor_options = ["Gaussian", "Pixel", "Fill", "Default"]
+
+        censor_privacy = ctk.CTkOptionMenu(
+            master=self.sidebar,
+            values=censor_options,
+            command=self.on_censor_select,
+        )
+
+        censor_privacy.pack(padx=20, pady=5)
+
+        privacy_label = ctk.CTkLabel(self.sidebar, text="Privacy type")
+        privacy_label.pack(pady=5)
+
+        privacy_options = ["All", "Specific", "Exclude"]
+
+        select_privacy = ctk.CTkOptionMenu(
+            master=self.sidebar,
+            values=privacy_options,
+            command=self.on_privacy_select,
+        )
+
+        select_privacy.pack(padx=20, pady=5)
+
+        # detect_btn = ctk.CTkButton(self.sidebar, text="Detect", command=self.start)
+        # detect_btn.pack(padx=20, pady=5)
+
+        self.feed.bind("<Button-1>", self.on_feed_click)
+        self.after(1, self.start)
+
+    def on_privacy_select(self, value: str):
+        # self.detect.set_privacy_control(value)
+        print(value)
+
+    def on_censor_select(self, value: str):
+        # self.detect.set_privacy_control(value)
+        print(value)
+
+    def on_feed_click(self, event):
         # Get the coordinates of the mouse click relative to the label
         x, y = event.x, event.y
         print(f"Mouse clicked at ({x}, {y}) within the label.")
@@ -214,10 +267,10 @@ class StreamPage(ctk.CTkFrame):
             # Convert the frame to PIL Image
             frame = Image.fromarray(frame)
             imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
-            self.content.imgtk = (
+            self.feed.imgtk = (
                 imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             )
-            self.content.configure(image=imgtk)  # show the image
+            self.feed.configure(image=imgtk)  # show the image
         self.after(10, self.update)
 
     def on_close(self, parent: ctk.CTk):

@@ -313,7 +313,7 @@ class Occultus:
         - dataset: The initialized dataset for processing video frames.
 
         Note:
-        - This method is MUST be called once before starting the object detection process.
+        - This method MUST be called once before starting the object detection process.
         """
         trace = False
         self.model["augment"] = False
