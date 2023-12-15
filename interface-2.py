@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import cv2
 from PIL import Image, ImageTk
+from occultus.core import Occultus
 
 
 class App(ctk.CTk):
@@ -169,6 +170,14 @@ class StreamPage(ctk.CTkFrame):
         CONTENT_PADDING = 140
         RECORD_BTN_SIZE = 60
 
+        self.occultus = Occultus("weights/kamukha-v3.pt")
+        self.occultus.load_stream()
+        # Set model configurations
+        self.occultus.set_config(
+            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
+        )
+        self.frames = self.occultus.initialize()
+
         controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
 
         # self.content = ctk.CTkLabel(
@@ -237,7 +246,7 @@ class StreamPage(ctk.CTkFrame):
         # detect_btn.pack(padx=20, pady=5)
 
         self.feed.bind("<Button-1>", self.on_feed_click)
-        self.after(1, self.start)
+        # self.after(, self.start_model)
 
     def on_privacy_select(self, value: str):
         # self.detect.set_privacy_control(value)
@@ -257,21 +266,40 @@ class StreamPage(ctk.CTkFrame):
             self.vid = cv2.VideoCapture(0)
             self.update()
 
-    def update(self):
-        # Get the latest frame from the video feed
-        ret, frame = self.vid.read()
+    # OLD
+    # def update(self):
+    #     # Get the latest frame from the video feed
+    #     ret, frame = self.vid.read()
 
-        if ret:
-            # Convert the frame to RGB format
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            # Convert the frame to PIL Image
-            frame = Image.fromarray(frame)
+    #     if ret:
+    #         # Convert the frame to RGB format
+    #         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #         # Convert the frame to PIL Image
+    #         frame = Image.fromarray(frame)
+    #         imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
+    #         self.feed.imgtk = (
+    #             imgtk  # anchor imgtk so it does not be deleted by garbage-collector
+    #         )
+    #         self.feed.configure(image=imgtk)  # show the image
+    #     self.after(10, self.update)
+
+    def update(self):
+        # TODO: Optimize this
+        for pred, dataset, iterables in self.occultus.inference(self.frames):
+            [frame, dets] = self.occultus.process(pred, dataset, iterables)
+
+            self.dets = dets
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+            frame = Image.fromarray(frame)  # convert image for PIL
             imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
             self.feed.imgtk = (
                 imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             )
             self.feed.configure(image=imgtk)  # show the image
-        self.after(10, self.update)
+            self.after(1, self.update)
+
+            return
 
     def on_close(self, parent: ctk.CTk):
         # Release the video feed and close the window
