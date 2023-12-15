@@ -209,7 +209,7 @@ class Occultus:
             self.blur_type = new_type
         else:
             raise ValueError(
-                "Invalid censor type. Please choose between the following: [default, gaussian, pixel, fill]"
+                f"Invalid censor type '{new_type}'. Please choose between the following: [default, gaussian, pixel, fill]"
             )
 
     def set_privacy_control(self, new_type: str = "all"):
@@ -241,7 +241,7 @@ class Occultus:
             self.select_type = new_type
         else:
             raise ValueError(
-                "Invalid select mode. Please choose between the following: ['all', 'specific', 'exclude']"
+                f"Invalid select mode '{new_type}'. Please choose between the following: ['all', 'specific', 'exclude']"
             )
 
         return

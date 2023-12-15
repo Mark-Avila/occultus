@@ -178,6 +178,8 @@ class StreamPage(ctk.CTkFrame):
         )
         self.frames = self.occultus.initialize()
 
+        self.occultus.set_blur_type("gaussian")
+
         controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
 
         # self.content = ctk.CTkLabel(
@@ -219,7 +221,7 @@ class StreamPage(ctk.CTkFrame):
         censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
         censor_label.pack(pady=5)
 
-        censor_options = ["Gaussian", "Pixel", "Fill", "Default"]
+        censor_options = ["Gaussian", "Pixelized", "Fill", "Detect"]
 
         censor_privacy = ctk.CTkOptionMenu(
             master=self.sidebar,
@@ -249,17 +251,39 @@ class StreamPage(ctk.CTkFrame):
         # self.after(, self.start_model)
 
     def on_privacy_select(self, value: str):
-        # self.detect.set_privacy_control(value)
-        print(value)
+        self.occultus.set_privacy_control(value.lower())
 
     def on_censor_select(self, value: str):
-        # self.detect.set_privacy_control(value)
-        print(value)
+        keys = {
+            "None": "default",
+            "Pixelized": "pixel",
+            "Fill": "fill",
+            "Detect": "default",
+        }
+
+        self.occultus.set_blur_type(keys[value])
+
+    def is_point_inside_box(self, point, box, padding=50):
+        x, y = point
+        x_min, y_min, x_max, y_max = box
+        return (x_min - padding) <= x <= (x_max + padding) and (
+            y_min - padding
+        ) <= y <= (y_max + padding)
 
     def on_feed_click(self, event):
         # Get the coordinates of the mouse click relative to the label
-        x, y = event.x, event.y
-        print(f"Mouse clicked at ({x}, {y}) within the label.")
+        coords = (event.x, event.y)
+
+        for det in self.dets:
+            print(f"Checking bounding box: {det['box']}")
+            if self.is_point_inside_box(coords, det["box"]):
+                print(f"Click coordinates {coords} are inside object ID {det['id']}")
+                self.occultus.append_id(det["id"])
+                continue
+            else:
+                print(
+                    f"Click coordinates {coords} are outside bounding box {det['box']}"
+                )
 
     def start(self):
         if self.vid is None:
