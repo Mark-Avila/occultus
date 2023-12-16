@@ -141,9 +141,7 @@ def check_requirements(requirements="requirements.txt", exclude=()):
             print(
                 f"{prefix} {e.req} not found and is required by YOLOR, attempting auto-update..."
             )
-            print(
-                subprocess.check_output(f"pip install '{e.req}'", shell=True).decode()
-            )
+            print(subprocess.check_output(f"pip install {e.req}", shell=True).decode())
 
     if n:  # if packages updated
         source = file.resolve() if "file" in locals() else requirements

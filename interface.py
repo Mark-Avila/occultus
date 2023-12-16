@@ -107,21 +107,19 @@ class App(ctk.CTk):
                 )
 
     def video_loop(self):
-        for pred, dataset, iterables in self.detect.inference(self.frames):
-            [frame, dets] = self.detect.process(pred, dataset, iterables)
+        pred, dataset, iterables = next(self.detect.inference(self.frames))
+        [frame, dets] = self.detect.process(pred, dataset, iterables)
 
-            self.dets = dets
+        self.dets = dets
 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-            frame = Image.fromarray(frame)  # convert image for PIL
-            imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
-            self.content.imgtk = (
-                imgtk  # anchor imgtk so it does not be deleted by garbage-collector
-            )
-            self.content.configure(image=imgtk)  # show the image
-            self.after(5, self.video_loop)
-
-            return
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        frame = Image.fromarray(frame)  # convert image for PIL
+        imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
+        self.content.imgtk = (
+            imgtk  # anchor imgtk so it does not be deleted by garbage-collector
+        )
+        self.content.configure(image=imgtk)  # show the image
+        self.after(5, self.video_loop)
 
 
 app = App()

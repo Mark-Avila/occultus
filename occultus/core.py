@@ -379,9 +379,9 @@ class Occultus:
 
         return dataset
 
-    def inference(self, dataset):
+    def inference(self, dataset, index: int = None):
         """
-        Perform object detection inference on the given dataset.
+        Perform object detection inference on the given dataloader.
 
         This method iterates over the frames in the provided dataset, processes each frame using the
         pre-loaded detection model, and yields the predictions along with additional information for each frame.
@@ -416,6 +416,7 @@ class Occultus:
         in the dataset. It yields the predictions, the original dataset, and additional information
         for further processing.
         """
+
         old_img_w = old_img_h = self.imgsz
         old_img_b = 1
         for path, img, im0s, vid_cap in dataset:
