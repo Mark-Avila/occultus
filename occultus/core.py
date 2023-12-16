@@ -316,75 +316,65 @@ class Occultus:
         - This method MUST be called once before starting the object detection process.
         """
         trace = False
-        self.model["augment"] = False
-        self.model["sort_tracker"] = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
+        self.augment = False
+        self.sort_tracker = Sort(max_age=5, min_hits=2, iou_threshold=0.2)
 
         self.save_img = not self.nosave and not self.source.endswith(".txt")
-        self.model["webcam"] = (
+        self.webcam = (
             self.source.isnumeric()
             or self.source.endswith(".txt")
             or self.source.lower().startswith(
                 ("rtsp://", "rtmp://", "http://", "https://")
             )
         )
-        self.model["save_dir"] = Path(
+        self.save_dir = Path(
             increment_path(Path(self.output) / self.name, exist_ok=False)
         )  # increment run
 
         if not self.nosave:
-            (self.model["save_dir"]).mkdir(parents=True, exist_ok=True)  # make dir
+            self.save_dir.mkdir(parents=True, exist_ok=True)  # make dir
 
         # Initialize
         set_logging()
-        self.model["device"] = select_device(self.device)
-        self.model["half"] = (
-            self.model["device"].type != "cpu"
-        )  # half precision only supported on CUDA
+        self.device = select_device(self.device)
+        self.half = self.device.type != "cpu"  # half precision only supported on CUDA
 
         # Load model
-        self.model["model"] = attempt_load(
-            self.weights, map_location=self.model["device"]
+        self.model = attempt_load(
+            self.weights, map_location=self.device
         )  # load FP32 model
-        stride = int(self.model["model"].stride.max())  # model stride
-        self.model["imgsz"] = check_img_size(self.img_size, s=stride)  # check img_size
+        stride = int(self.model.stride.max())  # model stride
+        self.imgsz = check_img_size(self.img_size, s=stride)  # check img_size
 
         if trace:
-            self.model["model"] = TracedModel(
-                self.model["model"], self.model["device"], self.img_size
-            )
+            self.model = TracedModel(self.model, self.device, self.img_size)
 
-        if self.model["half"]:
-            self.model["model"].half()  # to FP16
+        if self.half:
+            self.model.half()  # to FP16
 
         # Second-stage classifier
-        self.model["classify"] = False
-        if self.model["classify"]:
-            self.model["modelc"] = load_classifier(name="resnet101", n=2)  # initialize
-            self.model["modelc"].load_state_dict(
-                torch.load("weights/resnet101.pt", map_location=self.model["device"])[
-                    "model"
-                ]
-            ).to(self.model["device"]).eval()
+        self.classify = False
+        if self.classify:
+            self.modelc = load_classifier(name="resnet101", n=2)  # initialize
+            self.modelc.load_state_dict(
+                torch.load("weights/resnet101.pt", map_location=self.device)["model"]
+            ).to(self.device).eval()
 
         # Set Dataloader
-        self.model["vid_path"], self.model["vid_writer"] = None, None
-        if self.model["webcam"]:
+        self.vid_path, self.vid_writer = None, None
+        if self.webcam:
             self.view_image = check_imshow()
             cudnn.benchmark = True  # set True to speed up constant image size inference
-            dataset = LoadStreams(
-                self.source, img_size=self.model["imgsz"], stride=stride
-            )
+            dataset = LoadStreams(self.source, img_size=self.imgsz, stride=stride)
         else:
-            dataset = LoadImages(
-                self.source, img_size=self.model["imgsz"], stride=stride
-            )
+            dataset = LoadImages(self.source, img_size=self.imgsz, stride=stride)
 
         # Run inference once
-        if self.model["device"].type != "cpu":
-            self.model["model"](
-                torch.zeros(1, 3, self.model["imgsz"], self.model["imgsz"])
-                .to(self.model["device"])
-                .type_as(next(self.model["model"].parameters()))
+        if self.device.type != "cpu":
+            self.model(
+                torch.zeros(1, 3, self.imgsz, self.imgsz)
+                .to(self.device)
+                .type_as(next(self.model.parameters()))
             )  # run once
 
         return dataset
@@ -426,17 +416,17 @@ class Occultus:
         in the dataset. It yields the predictions, the original dataset, and additional information
         for further processing.
         """
-        old_img_w = old_img_h = self.model["imgsz"]
+        old_img_w = old_img_h = self.imgsz
         old_img_b = 1
         for path, img, im0s, vid_cap in dataset:
-            img = torch.from_numpy(img).to(self.model["device"])
-            img = img.half() if self.model["half"] else img.float()  # uint8 to fp16/32
+            img = torch.from_numpy(img).to(self.device)
+            img = img.half() if self.half else img.float()  # uint8 to fp16/32
             img /= 255.0  # 0 - 255 to 0.0 - 1.0
             if img.ndimension() == 3:
                 img = img.unsqueeze(0)
 
             # Warmup
-            if self.model["device"].type != "cpu" and (
+            if self.device.type != "cpu" and (
                 old_img_b != img.shape[0]
                 or old_img_h != img.shape[2]
                 or old_img_w != img.shape[3]
@@ -445,11 +435,11 @@ class Occultus:
                 old_img_h = img.shape[2]
                 old_img_w = img.shape[3]
                 for i in range(3):
-                    self.model["model"](img, augment=self.model["augment"])[0]
+                    self.model(img, augment=self.augment)[0]
 
             # Inference
             # t1 = time_synchronized()
-            pred = self.model["model"](img, augment=self.model["augment"])[0]
+            pred = self.model(img, augment=self.augment)[0]
             # t2 = time_synchronized()
 
             # Apply NMS
@@ -463,8 +453,8 @@ class Occultus:
             # t3 = time_synchronized()
 
             # Apply Classifier
-            if self.model["classify"]:
-                pred = apply_classifier(pred, self.model["modelc"], img, im0s)
+            if self.classify:
+                pred = apply_classifier(pred, self.modelc, img, im0s)
 
             iterables = {"path": path, "im0s": im0s, "img": img, "vid_cap": vid_cap}
 
@@ -512,18 +502,14 @@ class Occultus:
         configuration settings. It returns the processed image and a list of dictionaries containing
         information about detected objects, including their identities and bounding boxes.
         """
-        names = (
-            self.model["model"].names
-            if hasattr(self.model["model"], "module")
-            else self.model["model"].names
-        )
+        names = self.model.names if hasattr(self.model, "module") else self.model.names
 
         im0 = None
         bboxes = []
 
         # Process detections
         for i, det in enumerate(pred):  # detections per image
-            if self.model["webcam"]:  # batch_size >= 1
+            if self.webcam:  # batch_size >= 1
                 p, s, im0, frame = (
                     iterables["path"][i],
                     "%g: " % i,
@@ -539,8 +525,8 @@ class Occultus:
                 )
 
             p = Path(p)  # to Path
-            self.model["save_path"] = str(self.model["save_dir"] / p.name)  # img.jpg
-            self.model["txt_path"] = str(self.model["save_dir"] / "labels" / p.stem) + (
+            self.save_path = str(self.save_dir / p.name)  # img.jpg
+            self.txt_path = str(self.save_dir / "labels" / p.stem) + (
                 "" if dataset.mode == "image" else f"_{frame}"
             )  # img.txt
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
@@ -562,8 +548,8 @@ class Occultus:
                         (dets_to_sort, np.array([x1, y1, x2, y2, conf, detclass]))
                     )
 
-                tracked_dets = self.model["sort_tracker"].update(dets_to_sort, False)
-                tracks = self.model["sort_tracker"].getTrackers()
+                tracked_dets = self.sort_tracker.update(dets_to_sort, False)
+                tracks = self.sort_tracker.getTrackers()
 
                 # draw boxes for visualization
                 if len(tracked_dets) > 0:
@@ -668,8 +654,8 @@ class Occultus:
         - The file format is determined by the file extension in the `save_path`.
         - A message indicating the saved path is printed to the console.
         """
-        cv2.imwrite(self.model["save_path"], frame)
-        print(f"The image with the result is saved in: {self.model['save_path']}")
+        cv2.imwrite(self.save_path, frame)
+        print(f"The image with the result is saved in: {self.save_path}")
 
     def save_video(self, frame, iterables):
         """
@@ -695,21 +681,21 @@ class Occultus:
         - If the video writer is not initialized, this method creates a new video writer and writes
         the frame to the video file.
         """
-        if self.model["vid_path"] != self.model["save_path"]:  # new video
-            self.model["vid_path"] = self.model["save_path"]
-            if isinstance(self.model["vid_writer"], cv2.VideoWriter):
-                self.model["vid_writer"].release()  # release previous video writer
+        if self.vid_path != self.save_path:  # new video
+            self.vid_path = self.save_path
+            if isinstance(self.vid_writer, cv2.VideoWriter):
+                self.vid_writer.release()  # release previous video writer
             if iterables["vid_cap"]:  # video
                 fps = iterables["vid_cap"].get(cv2.CAP_PROP_FPS)
                 w = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_WIDTH))
                 h = int(iterables["vid_cap"].get(cv2.CAP_PROP_FRAME_HEIGHT))
             else:  # stream
                 fps, w, h = 30, frame.shape[1], frame.shape[0]
-                self.model["save_path"] += ".mp4"
-            self.model["vid_writer"] = cv2.VideoWriter(
-                self.model["save_path"], cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
+                self.save_path += ".mp4"
+            self.vid_writer = cv2.VideoWriter(
+                self.save_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
             )
-        self.model["vid_writer"].write(frame)
+        self.vid_writer.write(frame)
 
     def run(self, log=True, ext_frame=None):
         """
