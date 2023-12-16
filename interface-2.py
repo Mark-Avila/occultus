@@ -203,13 +203,18 @@ class StreamPage(ctk.CTkFrame):
         wrapper = ctk.CTkFrame(self.content, fg_color="transparent")
         wrapper.pack(fill="x", padx=CONTENT_PADDING, pady=(40, 0))
 
+        play_image = cv2.imread("assets/play.jpg")
+        play_image = cv2.cvtColor(play_image, cv2.COLOR_BGR2RGB)
+        play_image = Image.fromarray(play_image)
+
         record_btn = ctk.CTkButton(
             wrapper,
             corner_radius=50,
             width=RECORD_BTN_SIZE,
             height=RECORD_BTN_SIZE,
-            text=">",
+            text="",
             command=self.start,
+            image=ctk.CTkImage(play_image),
         )
         record_btn.pack(side=ctk.LEFT)
 
@@ -309,21 +314,19 @@ class StreamPage(ctk.CTkFrame):
 
     def update(self):
         # TODO: Optimize this
-        for pred, dataset, iterables in self.occultus.inference(self.frames):
-            [frame, dets] = self.occultus.process(pred, dataset, iterables)
+        pred, dataset, iterables = next(self.occultus.inference(self.frames))
+        [frame, dets] = self.occultus.process(pred, dataset, iterables)
 
-            self.dets = dets
+        self.dets = dets
 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-            frame = Image.fromarray(frame)  # convert image for PIL
-            imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
-            self.feed.imgtk = (
-                imgtk  # anchor imgtk so it does not be deleted by garbage-collector
-            )
-            self.feed.configure(image=imgtk)  # show the image
-            self.after(1, self.update)
-
-            return
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        frame = Image.fromarray(frame)  # convert image for PIL
+        imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
+        self.feed.imgtk = (
+            imgtk  # anchor imgtk so it does not be deleted by garbage-collector
+        )
+        self.feed.configure(image=imgtk)  # show the image
+        self.after(1, self.update)
 
     def on_close(self, parent: ctk.CTk):
         # Release the video feed and close the window
