@@ -16,7 +16,7 @@ class App(ctk.CTk):
 
         self.pages = {}
 
-        for Page in (LandingPage, SelectInputPage, SelectStreamPage, StreamPage):
+        for Page in (LandingPage, SelectInputPage, SelectStreamPage):
             frame = Page(container, self)
             self.pages[Page] = frame
             frame.grid(row=0, column=0, sticky="nsew")
@@ -139,7 +139,7 @@ class SelectStreamPage(ctk.CTkFrame):
         camera_button = ctk.CTkButton(
             center_frame,
             text="Camera",
-            command=lambda: controller.show_frame(StreamPage),
+            command=lambda: self.open_stream_window(controller=controller),
             width=256,
             height=32,
         )
@@ -160,10 +160,25 @@ class SelectStreamPage(ctk.CTkFrame):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
 
+    def open_stream_window(self, controller):
+        # Create an instance of SelectStreamPageWindow
+        select_stream_window = StreamPage(self, controller=controller)
+        select_stream_window.title("Select Stream Window")
 
-class StreamPage(ctk.CTkFrame):
+        # Make the new window modal
+        select_stream_window.grab_set()
+
+        # Wait for the new window to be closed before continuing
+        self.wait_window(select_stream_window)
+
+
+class StreamPage(ctk.CTkToplevel):
     def __init__(self, parent: ctk.CTk, controller):
-        ctk.CTkFrame.__init__(self, parent)
+        ctk.CTkToplevel.__init__(self, parent)
+
+        # Create a frame to center the content
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.pack(expand=True)
 
         self.vid = None
 
@@ -185,12 +200,12 @@ class StreamPage(ctk.CTkFrame):
         # self.content = ctk.CTkLabel(
         #     self, fg_color="#000000", text="", width=640, height=480
         # )
-        self.content = ctk.CTkFrame(self)
+        self.content = ctk.CTkFrame(container)
         self.content.grid(row=0, column=1, sticky="nsew")
 
         self.columnconfigure(1, weight=1)
 
-        self.sidebar = ctk.CTkFrame(self, width=200)
+        self.sidebar = ctk.CTkFrame(container, width=200)
         self.sidebar.grid(row=0, column=0, sticky="ns")
 
         self.rowconfigure(0, weight=1)
@@ -295,23 +310,6 @@ class StreamPage(ctk.CTkFrame):
             self.vid = cv2.VideoCapture(0)
             self.update()
 
-    # OLD
-    # def update(self):
-    #     # Get the latest frame from the video feed
-    #     ret, frame = self.vid.read()
-
-    #     if ret:
-    #         # Convert the frame to RGB format
-    #         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #         # Convert the frame to PIL Image
-    #         frame = Image.fromarray(frame)
-    #         imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
-    #         self.feed.imgtk = (
-    #             imgtk  # anchor imgtk so it does not be deleted by garbage-collector
-    #         )
-    #         self.feed.configure(image=imgtk)  # show the image
-    #     self.after(10, self.update)
-
     def update(self):
         # TODO: Optimize this
         pred, dataset, iterables = next(self.occultus.inference(self.frames))
@@ -326,7 +324,7 @@ class StreamPage(ctk.CTkFrame):
             imgtk  # anchor imgtk so it does not be deleted by garbage-collector
         )
         self.feed.configure(image=imgtk)  # show the image
-        self.after(1, self.update)
+        self.after(5, self.update)
 
     def on_close(self, parent: ctk.CTk):
         # Release the video feed and close the window
