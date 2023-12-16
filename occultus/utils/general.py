@@ -19,7 +19,6 @@ import torchvision
 import yaml
 
 # from occultus.utils.google_utils import gsutil_getsize
-from occultus.utils.metrics import fitness
 from occultus.utils.torch_utils import init_torch_seeds
 
 # Settings
