@@ -2,6 +2,7 @@ import customtkinter as ctk
 import cv2
 from PIL import Image, ImageTk
 from occultus.core import Occultus
+import threading
 
 
 class App(ctk.CTk):
@@ -182,32 +183,31 @@ class StreamPage(ctk.CTkToplevel):
         container.pack(expand=True)
 
         self.vid = None
+        self.running = True
 
-        CONTENT_PADDING = 0
-        RECORD_BTN_SIZE = 60
+        # On close handling
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
-
+        # Main content (Video feed wrapper)
         self.content = ctk.CTkFrame(container)
         self.content.grid(row=0, column=1, sticky="nsew")
-
         self.columnconfigure(1, weight=1)
 
+        # Sidebar content
         self.sidebar = ctk.CTkFrame(container, width=200)
         self.sidebar.grid(row=0, column=0, sticky="ns")
-
         self.rowconfigure(0, weight=1)
 
+        # Video feed display
         self.feed = ctk.CTkLabel(
-            self.content, fg_color="#000000", text="", width=640, height=480
+            self.content, fg_color="#000000", text="Loading", width=640, height=480
         )
-        self.feed.pack(padx=CONTENT_PADDING)
+        self.feed.pack()
 
         censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
         censor_label.pack(pady=5)
 
         censor_options = ["Gaussian", "Pixelized", "Fill", "Detect"]
-
         censor_privacy = ctk.CTkOptionMenu(
             master=self.sidebar,
             values=censor_options,
@@ -236,25 +236,13 @@ class StreamPage(ctk.CTkToplevel):
 
         record_btn.bind("<Enter>", self.on_enter)
         record_btn.bind("<Leave>", self.on_leave)
-
-        # detect_btn = ctk.CTkButton(self.sidebar, text="Detect", command=self.start)
-        # detect_btn.pack(padx=20, pady=5)
-
         self.feed.bind("<Button-1>", self.on_feed_click)
-        # self.after(, self.start_model)
 
-        self.occultus = Occultus("weights/kamukha-v3.pt")
-        self.occultus.load_stream()
+        # Start the video thread
+        video_thread = threading.Thread(target=self.video_thread_function)
+        video_thread.start()
 
-        # Set model configurations
-        self.occultus.set_config(
-            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
-        )
-        self.frames = self.occultus.initialize()
-
-        self.occultus.set_blur_type("gaussian")
-
-        self.start()
+        self.update_feed()
 
     def on_privacy_select(self, value: str):
         self.occultus.set_privacy_control(value.lower())
@@ -280,43 +268,55 @@ class StreamPage(ctk.CTkToplevel):
         # Get the coordinates of the mouse click relative to the label
         coords = (event.x, event.y)
 
-        for det in self.dets:
-            print(f"Checking bounding box: {det['box']}")
-            if self.is_point_inside_box(coords, det["box"]):
-                print(f"Click coordinates {coords} are inside object ID {det['id']}")
-                self.occultus.append_id(det["id"])
-                continue
-            else:
-                print(
-                    f"Click coordinates {coords} are outside bounding box {det['box']}"
-                )
+        if self.dets is not None:
+            for det in self.dets:
+                print(f"Checking bounding box: {det['box']}")
+                if self.is_point_inside_box(coords, det["box"]):
+                    self.occultus.append_id(det["id"])
+                    continue
 
-    def start(self):
-        if self.vid is None:
-            self.vid = cv2.VideoCapture(0)
-            self.update()
+    def update_feed(self):
+        # Update the GUI every 5 milliseconds
+        self.after(5, self.update_feed)
 
-    def update(self):
-        # TODO: Optimize this
-        pred, dataset, iterables = next(self.occultus.inference(self.frames))
-        [frame, dets] = self.occultus.process(pred, dataset, iterables)
+        # Update the Tkinter GUI with the latest frame
+        if hasattr(self, "current_frame"):
+            self.feed.configure(text="", image=self.current_frame)
 
-        self.dets = dets
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        frame = Image.fromarray(frame)  # convert image for PIL
-        imgtk = ctk.CTkImage(frame, size=(640, 480))  # convert image for tkinter
-        self.feed.imgtk = (
-            imgtk  # anchor imgtk so it does not be deleted by garbage-collector
+    def video_thread_function(self):
+        # Open the video capture
+        self.occultus = Occultus("weights/kamukha-v3.pt")
+        self.occultus.load_stream()
+        self.occultus.set_config(
+            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
         )
-        self.feed.configure(image=imgtk)  # show the image
-        self.after(1, self.update)
+        self.frames = self.occultus.initialize()
+        self.occultus.set_blur_type("gaussian")
 
-    def on_close(self, parent: ctk.CTk):
+        for pred, dataset, iterables in self.occultus.inference(self.frames):
+            if self.running:
+                # Process the frame
+                [frame, dets] = self.occultus.process(pred, dataset, iterables)
+                self.dets = dets
+
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+                frame = Image.fromarray(frame)  # convert image for PIL
+                imgtk = ctk.CTkImage(
+                    frame, size=(640, 480)
+                )  # convert image for tkinter
+                # self.feed.configure(image=imgtk)
+                self.current_frame = imgtk
+            else:
+                break
+
+    def on_close(self):
         # Release the video feed and close the window
         if self.vid and self.vid.isOpened():
             self.vid.release()
-        parent.destroy()
+
+        self.running = False
+
+        self.destroy()
 
     def on_enter(self, event):
         # Change cursor style on hover
