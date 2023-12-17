@@ -7,7 +7,7 @@ from occultus.core import Occultus
 class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         ctk.CTk.__init__(self, *args, **kwargs)
-        self.geometry("1080x720")
+        self.geometry("720x480")
 
         container = ctk.CTkFrame(self)
         container.pack(side="top", fill="both", expand=True)
@@ -139,7 +139,7 @@ class SelectStreamPage(ctk.CTkFrame):
         camera_button = ctk.CTkButton(
             center_frame,
             text="Camera",
-            command=lambda: self.open_stream_window(controller=controller),
+            command=self.open_stream_window,
             width=256,
             height=32,
         )
@@ -160,21 +160,22 @@ class SelectStreamPage(ctk.CTkFrame):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
 
-    def open_stream_window(self, controller):
+    def open_stream_window(self):
         # Create an instance of SelectStreamPageWindow
-        select_stream_window = StreamPage(self, controller=controller)
-        select_stream_window.title("Select Stream Window")
+        stream_window = StreamPage()
+        stream_window.title("Select Stream Window")
 
         # Make the new window modal
-        select_stream_window.grab_set()
+        stream_window.grab_set()
 
         # Wait for the new window to be closed before continuing
-        self.wait_window(select_stream_window)
+        self.wait_window(stream_window)
 
 
 class StreamPage(ctk.CTkToplevel):
-    def __init__(self, parent: ctk.CTk, controller):
-        ctk.CTkToplevel.__init__(self, parent)
+    def __init__(self):
+        ctk.CTkToplevel.__init__(self)
+        self.title("Occultus")
 
         # Create a frame to center the content
         container = ctk.CTkFrame(self, fg_color="transparent")
@@ -182,24 +183,11 @@ class StreamPage(ctk.CTkToplevel):
 
         self.vid = None
 
-        CONTENT_PADDING = 140
+        CONTENT_PADDING = 0
         RECORD_BTN_SIZE = 60
 
-        self.occultus = Occultus("weights/kamukha-v3.pt")
-        self.occultus.load_stream()
-        # Set model configurations
-        self.occultus.set_config(
-            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
-        )
-        self.frames = self.occultus.initialize()
+        # controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
 
-        self.occultus.set_blur_type("gaussian")
-
-        controller.protocol("WM_DELETE_WINDOW", lambda: self.on_close(controller))
-
-        # self.content = ctk.CTkLabel(
-        #     self, fg_color="#000000", text="", width=640, height=480
-        # )
         self.content = ctk.CTkFrame(container)
         self.content.grid(row=0, column=1, sticky="nsew")
 
@@ -213,30 +201,7 @@ class StreamPage(ctk.CTkToplevel):
         self.feed = ctk.CTkLabel(
             self.content, fg_color="#000000", text="", width=640, height=480
         )
-        self.feed.pack(padx=CONTENT_PADDING, pady=(40, 0))
-
-        wrapper = ctk.CTkFrame(self.content, fg_color="transparent")
-        wrapper.pack(fill="x", padx=CONTENT_PADDING, pady=(40, 0))
-
-        play_image = cv2.imread("assets/play.jpg")
-        play_image = cv2.cvtColor(play_image, cv2.COLOR_BGR2RGB)
-        play_image = Image.fromarray(play_image)
-
-        record_btn = ctk.CTkButton(
-            wrapper,
-            corner_radius=50,
-            width=RECORD_BTN_SIZE,
-            height=RECORD_BTN_SIZE,
-            text="",
-            command=self.start,
-            image=ctk.CTkImage(play_image),
-        )
-        record_btn.pack(side=ctk.LEFT)
-
-        time_lbl = ctk.CTkLabel(
-            wrapper, text="0:00", font=ctk.CTkFont(weight="bold", size=24)
-        )
-        time_lbl.pack(side=ctk.LEFT, padx=(40, 0))
+        self.feed.pack(padx=CONTENT_PADDING)
 
         censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
         censor_label.pack(pady=5)
@@ -264,11 +229,32 @@ class StreamPage(ctk.CTkToplevel):
 
         select_privacy.pack(padx=20, pady=5)
 
+        record_btn = ctk.CTkButton(
+            self.sidebar, text="Record", fg_color="#FF0000", hover_color="#990000"
+        )
+        record_btn.pack(padx=20, pady=5)
+
+        record_btn.bind("<Enter>", self.on_enter)
+        record_btn.bind("<Leave>", self.on_leave)
+
         # detect_btn = ctk.CTkButton(self.sidebar, text="Detect", command=self.start)
         # detect_btn.pack(padx=20, pady=5)
 
         self.feed.bind("<Button-1>", self.on_feed_click)
         # self.after(, self.start_model)
+
+        self.occultus = Occultus("weights/kamukha-v3.pt")
+        self.occultus.load_stream()
+
+        # Set model configurations
+        self.occultus.set_config(
+            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
+        )
+        self.frames = self.occultus.initialize()
+
+        self.occultus.set_blur_type("gaussian")
+
+        self.start()
 
     def on_privacy_select(self, value: str):
         self.occultus.set_privacy_control(value.lower())
@@ -324,13 +310,21 @@ class StreamPage(ctk.CTkToplevel):
             imgtk  # anchor imgtk so it does not be deleted by garbage-collector
         )
         self.feed.configure(image=imgtk)  # show the image
-        self.after(5, self.update)
+        self.after(1, self.update)
 
     def on_close(self, parent: ctk.CTk):
         # Release the video feed and close the window
         if self.vid and self.vid.isOpened():
             self.vid.release()
         parent.destroy()
+
+    def on_enter(self, event):
+        # Change cursor style on hover
+        event.widget.configure(cursor="hand2")
+
+    def on_leave(self, event):
+        # Change cursor style back to the default
+        event.widget.configure(cursor="")
 
 
 if __name__ == "__main__":
