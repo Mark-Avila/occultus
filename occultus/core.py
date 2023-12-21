@@ -177,17 +177,16 @@ class Occultus:
 
         return
 
-    def detect(self, source):
-        og_img = cv2.imread(source)
-        img = self.__to_ndarray(og_img)
+    def detect(self, frame):
+        img = self.__to_ndarray(frame)
         img = self.__preprocess(img)
         pred = self.__inference(img)
-        results = self.__postprocess(pred, img, og_img)
+        results = self.__postprocess(pred, img, frame)
 
         # [frame, bboxes] = results
         return results
 
-    def detect_display(self, source):
+    def detect_image(self, source):
         og_img = cv2.imread(source)
         img = self.__to_ndarray(og_img)
         img = self.__preprocess(img)
