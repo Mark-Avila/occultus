@@ -244,9 +244,9 @@ class StreamPage(ctk.CTkToplevel):
         record_btn.bind("<Leave>", self.on_leave)
         self.feed.bind("<Button-1>", self.on_feed_click)
 
-        # Start the video thread
-        video_thread = threading.Thread(target=self.video_thread_function)
-        video_thread.start()
+        # Start the webcam thread
+        webcam_thread = threading.Thread(target=self.webcam_thread)
+        webcam_thread.start()
 
         self.update_feed()
 
@@ -299,36 +299,19 @@ class StreamPage(ctk.CTkToplevel):
             self.is_recording = True
             parent.configure(text="Stop")
 
-    def video_thread_function(self):
+    def webcam_thread(self):
         # Open the video capture
         self.occultus = Occultus("weights/kamukha-v3.pt")
-        self.occultus.load_stream()
-        self.occultus.set_config(
-            {"blur_type": "pixel", "flipped": True, "conf_thres": 0.5}
-        )
-        self.frames = self.occultus.initialize()
-        self.occultus.set_blur_type("gaussian")
+        self.occultus.set_blur_type("pixel")
+        self.dets = []
+        imgtk = None
 
-        for pred, dataset, iterables in self.occultus.inference(self.frames):
-            if self.running:
-                # Process the frame
-                [frame, dets] = self.occultus.process(pred, dataset, iterables)
-                self.dets = dets
-                iterables = iterables
-                raw_frame = frame
-
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-                frame = Image.fromarray(frame)  # convert image for PIL
-                imgtk = ctk.CTkImage(
-                    frame, size=(640, 480)
-                )  # convert image for tkinter
-                # self.feed.configure(image=imgtk)
-                self.current_frame = imgtk
-
-                if self.is_recording:
-                    self.occultus.save_video(raw_frame, iterables)
-            else:
-                break
+        for og_img, bboxes in self.occultus.detect_input_generator():
+            self.dets = bboxes
+            img = cv2.cvtColor(og_img, cv2.COLOR_BGR2RGBA)
+            img = Image.fromarray(img)
+            imgtk = ctk.CTkImage(img, size=(640, 480))
+            self.current_frame = imgtk
 
     def on_close(self):
         # Release the video feed and close the window

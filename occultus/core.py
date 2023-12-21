@@ -275,6 +275,42 @@ class Occultus:
         cap.release()
         cv2.destroyAllWindows()
 
+    def detect_input_generator(self, source: str = "0", frame_interval=2):
+        if source.isnumeric():
+            source = eval(source)
+
+        cap = cv2.VideoCapture(source)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+
+        try:
+            while True:
+                if source == 0:
+                    ret_val, og_img = cap.read()
+                    og_img = cv2.flip(og_img, 1)
+                else:
+                    n = 0
+                    while True:
+                        n += 1
+                        cap.grab()
+                        if n == frame_interval:  # Grab every frame by frame_interval
+                            ret_val, og_img = cap.retrieve()
+                            n = 0
+                            if ret_val:
+                                break
+
+                assert ret_val, f"Camera Error {source}"
+
+                img = self.__to_ndarray(og_img)
+                img = self.__preprocess(img)
+                pred = self.__inference(img)
+                [frame, bboxes] = self.__postprocess(pred, img, og_img)
+
+                # [frame, bboxes] = results
+                yield frame, bboxes
+        finally:
+            cap.release()
+            cv2.destroyAllWindows()
+
     def __to_ndarray(self, frame):
         # Padded resize
         img = letterbox(frame, self.img_size, stride=self.stride)[0]
