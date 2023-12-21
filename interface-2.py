@@ -3,6 +3,7 @@ import cv2
 from PIL import Image, ImageTk
 from occultus.core import Occultus
 import threading
+import os
 
 
 class App(ctk.CTk):
@@ -307,6 +308,23 @@ class StreamPage(ctk.CTkToplevel):
         self.dets = []
         imgtk = None
 
+        cap = cv2.VideoCapture(0)
+
+        if not cap.isOpened():
+            raise Exception("Failed to load webcam")
+
+        width = int(cap.get(3))
+        height = int(cap.get(4))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        output_dir = "webcam_output"
+        os.makedirs(output_dir, exist_ok=True)
+        save_path = os.path.join(output_dir, os.path.basename("webcam.avi"))
+
+        cap.release()
+
+        writer = None
+
         for og_img, bboxes in self.occultus.detect_input_generator():
             if not self.running:
                 break
@@ -316,6 +334,26 @@ class StreamPage(ctk.CTkToplevel):
             img = Image.fromarray(img)
             imgtk = ctk.CTkImage(img, size=(640, 480))
             self.current_frame = imgtk
+
+            if self.is_recording:
+                if isinstance(writer, cv2.VideoWriter):
+                    writer.write(og_img)
+                else:
+                    writer = cv2.VideoWriter(
+                        save_path,
+                        cv2.VideoWriter_fourcc(*"XVID"),
+                        int(
+                            fps * 0.75
+                        ),  # Match FPS with inference speed (75% of original fps)
+                        (width, height),
+                    )
+                    writer.write(og_img)
+            else:
+                if isinstance(writer, cv2.VideoWriter):
+                    writer.release()
+
+        if isinstance(writer, cv2.VideoWriter):
+            writer.release()
 
     def on_close(self):
         # Release the video feed and close the window
