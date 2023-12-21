@@ -182,21 +182,30 @@ class Occultus:
         img = self.__to_ndarray(og_img)
         img = self.__preprocess(img)
         pred = self.__inference(img)
-        [result_img, _] = self.__postprocess(pred, img, og_img)
+        results = self.__postprocess(pred, img, og_img)
 
+        # [frame, bboxes] = results
+        return results
+
+    def detect_display(self, source):
+        og_img = cv2.imread(source)
+        img = self.__to_ndarray(og_img)
+        img = self.__preprocess(img)
+        pred = self.__inference(img)
+        [result_img, bboxes] = self.__postprocess(pred, img, og_img)
+
+        print(bboxes)
         cv2.imshow("Occultus", result_img)
         cv2.waitKey(0)  # 1 millisecond
 
     def detect_video(self, source):
-        # # vid_path, vid_writer = None, None
-        # frames = LoadImages(source, img_size=self.img_size, stride=self.stride)
         cap = cv2.VideoCapture(source)
         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
         height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        output_dir = "output"
+        output_dir = self.save_dir
         os.makedirs(output_dir, exist_ok=True)
         save_path = os.path.join(output_dir, os.path.basename(source))
 
@@ -217,7 +226,7 @@ class Occultus:
             img = self.__to_ndarray(og_img)
             img = self.__preprocess(img)
             pred = self.__inference(img)
-            [result_img, bboxes] = self.__postprocess(pred, img, og_img)
+            [result_img, _] = self.__postprocess(pred, img, og_img)
             writer.write(result_img)
 
             print(f"Frame {frame_id}/{frame_count}: Done")
@@ -225,6 +234,45 @@ class Occultus:
             frame_id = frame_id + 1
 
         writer.release()
+        cv2.destroyAllWindows()
+
+    def detect_input(self, source: str = "0", frame_interval=2):
+        if source.isnumeric():
+            source = eval(source)
+
+        cap = cv2.VideoCapture(source)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+
+        while True:
+            if cv2.waitKey(1) == ord("q"):
+                break
+
+            if source == 0:
+                ret_val, og_img = cap.read()
+                og_img = cv2.flip(og_img, 1)
+            else:
+                n = 0
+                while True:
+                    n += 1
+                    cap.grab()
+                    if n == frame_interval:  # Grab every frame by frame_interval
+                        ret_val, og_img = cap.retrieve()
+                        n = 0
+                        if ret_val:
+                            break
+
+            assert ret_val, f"Camera Error {source}"
+
+            img = self.__to_ndarray(og_img)
+            img = self.__preprocess(img)
+            pred = self.__inference(img)
+            [result_img, bboxes] = self.__postprocess(pred, img, og_img)
+
+            print(bboxes)
+
+            cv2.imshow("Occultus", result_img)
+
+        cap.release()
         cv2.destroyAllWindows()
 
     def __to_ndarray(self, frame):
@@ -280,7 +328,6 @@ class Occultus:
 
     def __postprocess(self, preds, img, og_img):
         bboxes = []
-        im0 = None
 
         for i, det in enumerate(preds):
             if len(det):
@@ -374,13 +421,7 @@ class Occultus:
                     for index, idt in enumerate(identities):
                         new_preds = {"id": int(idt), "box": bbox_xyxy[index]}
                         bboxes.append(new_preds)
+            else:
+                result_img = og_img
 
         return [result_img, bboxes]
-
-    def show_frame(self, frame):
-        cv2.imshow("Face", frame)
-        cv2.waitKey(1)  # 1 millisecond
-
-    def save_img(self, frame):
-        cv2.imwrite(self.save_path, frame)
-        print(f"The image with the result is saved in: {self.save_path}")
