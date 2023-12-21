@@ -84,7 +84,7 @@ class App(ctk.CTk):
     def set_detect(self):
         self.detect.set_blur_type("default")
 
-    def is_point_inside_box(self, point, box, padding=50):
+    def is_point_inside_box(self, point, box, padding=0):
         x, y = point
         x_min, y_min, x_max, y_max = box
         return (x_min - padding) <= x <= (x_max + padding) and (
@@ -95,16 +95,13 @@ class App(ctk.CTk):
         # Get the coordinates of the mouse click relative to the label
         coords = (event.x, event.y)
 
+        print(coords)
+
         for det in self.dets:
-            print(f"Checking bounding box: {det['box']}")
             if self.is_point_inside_box(coords, det["box"]):
                 print(f"Click coordinates {coords} are inside object ID {det['id']}")
                 self.detect.append_id(det["id"])
                 continue
-            else:
-                print(
-                    f"Click coordinates {coords} are outside bounding box {det['box']}"
-                )
 
     def video_loop(self):
         pred, dataset, iterables = next(self.detect.inference(self.frames))

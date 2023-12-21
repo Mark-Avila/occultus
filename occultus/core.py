@@ -71,19 +71,19 @@ class Occultus:
         occultus = Occultus("path/to/weights")
         ```
         """
-        self.weights = weights
-        self.conf_thres = 0.25
-        self.iou = 0.45
+        self.weights = weights  # ///
+        self.conf_thres = 0.25  # ///
+        self.iou = 0.45  # ///
         self.device = ""
         self.nosave = False
-        self.output = "output"
+        self.output = "output"  # ///
         self.name = datetime.datetime.now().strftime("%b_%d_%Y-%H_%M_%S_")
         self.track = False
         self.show_fps = False
         self.thickness = 2
         self.nobbox = False
         self.nolabel = True
-        self.view_image = True
+        # self.view_image = True
         self.id_list: list = []
         self.view_image_test = None
         self.flipped = False
@@ -146,7 +146,7 @@ class Occultus:
 
         self.source = source
         self.img_size = img_size
-        self.view_image = False
+        # self.view_image = False
         self.nosave = False
 
     def load_stream(self, source: str = "0", img_size=640, flipped=False):
@@ -190,7 +190,7 @@ class Occultus:
 
         self.source = source
         self.img_size = img_size
-        self.view_image = True
+        # self.view_image = True
         self.flipped = flipped
         self.nosave = True
 
@@ -363,7 +363,7 @@ class Occultus:
         # Set Dataloader
         self.vid_path, self.vid_writer = None, None
         if self.webcam:
-            self.view_image = check_imshow()
+            # self.view_image = check_imshow()
             cudnn.benchmark = True  # set True to speed up constant image size inference
             dataset = LoadStreams(self.source, img_size=self.imgsz, stride=stride)
         else:
@@ -682,6 +682,7 @@ class Occultus:
         - If the video writer is not initialized, this method creates a new video writer and writes
         the frame to the video file.
         """
+
         if self.vid_path != self.save_path:  # new video
             self.vid_path = self.save_path
             if isinstance(self.vid_writer, cv2.VideoWriter):
@@ -767,7 +768,7 @@ class Occultus:
         # Set Dataloader
         vid_path, vid_writer = None, None
         if webcam:
-            self.view_image = check_imshow()
+            # self.view_image = check_imshow()
             cudnn.benchmark = True  # set True to speed up constant image size inference
             dataset = LoadStreams(self.source, img_size=imgsz, stride=stride)
         else:
@@ -940,10 +941,10 @@ class Occultus:
                 #     ext_frame.imgtk = imgtk
                 #     ext_frame.configure(image=imgtk)
 
-                elif self.view_image:
-                    im0 = cv2.flip(im0, 1) if self.flipped else im0
-                    cv2.imshow(str(p), im0)
-                    cv2.waitKey(1)  # 1 millisecond
+                # elif self.view_image:
+                #     im0 = cv2.flip(im0, 1) if self.flipped else im0
+                #     cv2.imshow(str(p), im0)
+                #     cv2.waitKey(1)  # 1 millisecond
 
                 # Save results (image with detections)
                 if save_img:

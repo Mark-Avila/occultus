@@ -184,6 +184,8 @@ class StreamPage(ctk.CTkToplevel):
 
         self.vid = None
         self.running = True
+        self.is_recording = False
+        self.iterables = None
 
         # On close handling
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -230,7 +232,11 @@ class StreamPage(ctk.CTkToplevel):
         select_privacy.pack(padx=20, pady=5)
 
         record_btn = ctk.CTkButton(
-            self.sidebar, text="Record", fg_color="#FF0000", hover_color="#990000"
+            self.sidebar,
+            text="Record",
+            fg_color="#FF0000",
+            hover_color="#990000",
+            command=lambda: self.on_record(record_btn),
         )
         record_btn.pack(padx=20, pady=5)
 
@@ -277,11 +283,21 @@ class StreamPage(ctk.CTkToplevel):
 
     def update_feed(self):
         # Update the GUI every 5 milliseconds
-        self.after(5, self.update_feed)
+        self.after(4, self.update_feed)
 
         # Update the Tkinter GUI with the latest frame
         if hasattr(self, "current_frame"):
+            # if self.is_recording:
+            #     self.occultus.save_video(frame=self.raw_frame, iterables=self.iterables)
             self.feed.configure(text="", image=self.current_frame)
+
+    def on_record(self, parent: ctk.CTkButton):
+        if self.is_recording:
+            self.is_recording = False
+            parent.configure(text="Start")
+        else:
+            self.is_recording = True
+            parent.configure(text="Stop")
 
     def video_thread_function(self):
         # Open the video capture
@@ -298,6 +314,8 @@ class StreamPage(ctk.CTkToplevel):
                 # Process the frame
                 [frame, dets] = self.occultus.process(pred, dataset, iterables)
                 self.dets = dets
+                iterables = iterables
+                raw_frame = frame
 
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
                 frame = Image.fromarray(frame)  # convert image for PIL
@@ -306,6 +324,9 @@ class StreamPage(ctk.CTkToplevel):
                 )  # convert image for tkinter
                 # self.feed.configure(image=imgtk)
                 self.current_frame = imgtk
+
+                if self.is_recording:
+                    self.occultus.save_video(raw_frame, iterables)
             else:
                 break
 
