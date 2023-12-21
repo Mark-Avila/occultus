@@ -255,7 +255,7 @@ class StreamPage(ctk.CTkToplevel):
 
     def on_censor_select(self, value: str):
         keys = {
-            "None": "default",
+            "Gaussian": "gaussian",
             "Pixelized": "pixel",
             "Fill": "fill",
             "Detect": "default",
