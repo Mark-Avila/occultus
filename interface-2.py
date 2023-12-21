@@ -278,6 +278,7 @@ class StreamPage(ctk.CTkToplevel):
             for det in self.dets:
                 print(f"Checking bounding box: {det['box']}")
                 if self.is_point_inside_box(coords, det["box"]):
+                    print(f"Click is inside object ID: {det['id']}")
                     self.occultus.append_id(det["id"])
                     continue
 
@@ -307,6 +308,9 @@ class StreamPage(ctk.CTkToplevel):
         imgtk = None
 
         for og_img, bboxes in self.occultus.detect_input_generator():
+            if not self.running:
+                break
+
             self.dets = bboxes
             img = cv2.cvtColor(og_img, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(img)
@@ -315,11 +319,7 @@ class StreamPage(ctk.CTkToplevel):
 
     def on_close(self):
         # Release the video feed and close the window
-        if self.vid and self.vid.isOpened():
-            self.vid.release()
-
         self.running = False
-
         self.destroy()
 
     def on_enter(self, event):
