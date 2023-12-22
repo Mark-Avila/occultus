@@ -388,6 +388,8 @@ class VideoPage(ctk.CTkToplevel):
         self.title("Fullscreen App")
         self.state("zoomed")
 
+        self.current_frame = None
+
         # Create a sidebar
         self.sidebar = ctk.CTkFrame(self)
         self.sidebar.pack(side=ctk.LEFT, fill=ctk.Y)
@@ -423,10 +425,10 @@ class VideoPage(ctk.CTkToplevel):
         select_privacy.pack(padx=30, pady=5)
 
         # Video feed display
-        video_feed = ctk.CTkLabel(
+        self.video_feed = ctk.CTkLabel(
             self.container, fg_color="#000000", text="Loading", width=720, height=480
         )
-        video_feed.pack(pady=(40, 0))
+        self.video_feed.pack(pady=(40, 0))
 
         video_slider = ctk.CTkSlider(self.container, width=720)
         video_slider.pack(pady=(40, 0))
@@ -441,9 +443,11 @@ class VideoPage(ctk.CTkToplevel):
         video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
         video_end_btn.pack(padx=20, side=ctk.LEFT)
 
-    def on_button_click(self):
-        # Update container frame content on button click
-        self.container_label.config(text="Button clicked!")
+        # Start the webcam thread
+        video_thread = threading.Thread(target=self.video_thread)
+        video_thread.start()
+
+        self.update_feed()
 
     def on_privacy_select(self, value: str):
         print(value.lower())
@@ -457,6 +461,41 @@ class VideoPage(ctk.CTkToplevel):
         }
 
         print(keys[value])
+
+    def update_feed(self):
+        # Update the Tkinter GUI with the latest frame
+        if hasattr(self, "current_frame"):
+            # if self.is_recording:
+            #     self.occultus.save_video(frame=self.raw_frame, iterables=self.iterables)
+            self.video_feed.configure(text="", image=self.current_frame)
+
+        self.after(4, self.update_feed)
+
+    def video_thread(self):
+        cap = cv2.VideoCapture("video/pips-2.mp4")
+
+        if not cap.isOpened():
+            cap.release()
+            raise Exception("Failed to load video")
+
+        frame = 1
+        while True:
+            ret_val, og_img = cap.read()
+
+            if not ret_val:
+                break
+
+            img = cv2.cvtColor(og_img, cv2.COLOR_BGR2RGBA)
+            img = Image.fromarray(img)
+            imgtk = ctk.CTkImage(img, size=(720, 480))
+            self.current_frame = imgtk
+            frame = frame + 1
+
+            # Introduce a delay to match the video frame rate (assuming 30 frames per second)
+            delay = int(1000 / 30)  # Delay to achieve 30 frames per second
+            cv2.waitKey(delay)
+
+        cap.release()
 
 
 if __name__ == "__main__":
