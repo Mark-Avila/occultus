@@ -86,7 +86,11 @@ class SelectInputPage(ctk.CTkFrame):
         select_label.pack()
 
         loadvid_button = ctk.CTkButton(
-            center_frame, text="Load video", height=40, width=256
+            center_frame,
+            text="Load video",
+            height=40,
+            width=256,
+            command=self.open_videopage,
         )
         loadvid_button.pack(pady=20)
 
@@ -111,6 +115,16 @@ class SelectInputPage(ctk.CTkFrame):
     def on_leave(self, event):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
+
+    def open_videopage(self):
+        # Create an instance of SelectStreamPageWindow
+        video_window = VideoPage()
+
+        # Make the new window modal
+        video_window.grab_set()
+
+        # Wait for the new window to be closed before continuing
+        self.wait_window(video_window)
 
 
 class SelectStreamPage(ctk.CTkFrame):
@@ -141,7 +155,7 @@ class SelectStreamPage(ctk.CTkFrame):
         camera_button = ctk.CTkButton(
             center_frame,
             text="Camera",
-            command=self.open_stream_window,
+            command=self.open_streampage,
             width=256,
             height=32,
         )
@@ -162,7 +176,7 @@ class SelectStreamPage(ctk.CTkFrame):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
 
-    def open_stream_window(self):
+    def open_streampage(self):
         # Create an instance of SelectStreamPageWindow
         stream_window = StreamPage()
         stream_window.title("Select Stream Window")
@@ -303,8 +317,7 @@ class StreamPage(ctk.CTkToplevel):
 
     def webcam_thread(self):
         # Open the video capture
-        self.occultus = Occultus("weights/kamukha-v3.pt")
-        self.occultus.set_blur_type("pixel")
+        self.occultus = Occultus("weights/kamukha-v2.pt")
         self.dets = []
         imgtk = None
 
@@ -325,7 +338,7 @@ class StreamPage(ctk.CTkToplevel):
 
         writer = None
 
-        for og_img, bboxes in self.occultus.detect_input_generator():
+        for og_img, bboxes in self.occultus.detect_input_generator(frame_interval=2):
             if not self.running:
                 break
 
@@ -367,6 +380,83 @@ class StreamPage(ctk.CTkToplevel):
     def on_leave(self, event):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
+
+
+class VideoPage(ctk.CTkToplevel):
+    def __init__(self):
+        ctk.CTkToplevel.__init__(self)
+        self.title("Fullscreen App")
+        self.state("zoomed")
+
+        # Create a sidebar
+        self.sidebar = ctk.CTkFrame(self)
+        self.sidebar.pack(side=ctk.LEFT, fill=ctk.Y)
+
+        # Create a container frame
+        self.container = ctk.CTkFrame(self, fg_color="transparent")
+        self.container.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
+
+        censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
+        censor_label.pack(pady=5)
+
+        censor_options = ["Gaussian", "Pixelized", "Fill", "Detect"]
+        censor_privacy = ctk.CTkOptionMenu(
+            master=self.sidebar,
+            values=censor_options,
+            command=self.on_censor_select,
+            width=240,
+        )
+
+        censor_privacy.pack(padx=30, pady=5)
+
+        privacy_label = ctk.CTkLabel(self.sidebar, text="Privacy type")
+        privacy_label.pack(pady=5)
+
+        privacy_options = ["All", "Specific", "Exclude"]
+
+        select_privacy = ctk.CTkOptionMenu(
+            master=self.sidebar,
+            values=privacy_options,
+            command=self.on_privacy_select,
+            width=240,
+        )
+        select_privacy.pack(padx=30, pady=5)
+
+        # Video feed display
+        video_feed = ctk.CTkLabel(
+            self.container, fg_color="#000000", text="Loading", width=720, height=480
+        )
+        video_feed.pack(pady=(40, 0))
+
+        video_slider = ctk.CTkSlider(self.container, width=720)
+        video_slider.pack(pady=(40, 0))
+
+        player_wrapper = ctk.CTkFrame(self.container, width=720, fg_color="transparent")
+        player_wrapper.pack(pady=(40, 0))
+
+        video_start_btn = ctk.CTkButton(player_wrapper, width=80, text="Start")
+        video_start_btn.pack(padx=20, side=ctk.LEFT)
+        video_play_btn = ctk.CTkButton(player_wrapper, width=80, text="Play")
+        video_play_btn.pack(padx=20, side=ctk.LEFT)
+        video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
+        video_end_btn.pack(padx=20, side=ctk.LEFT)
+
+    def on_button_click(self):
+        # Update container frame content on button click
+        self.container_label.config(text="Button clicked!")
+
+    def on_privacy_select(self, value: str):
+        print(value.lower())
+
+    def on_censor_select(self, value: str):
+        keys = {
+            "Gaussian": "gaussian",
+            "Pixelized": "pixel",
+            "Fill": "fill",
+            "Detect": "default",
+        }
+
+        print(keys[value])
 
 
 if __name__ == "__main__":

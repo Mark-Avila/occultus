@@ -60,7 +60,13 @@ sys.path.insert(0, "./occultus")
 
 class Occultus:
     def __init__(
-        self, weights: str, conf_thres=0.25, iou=0.45, device="", img_size=640
+        self,
+        weights: str,
+        conf_thres=0.25,
+        iou=0.45,
+        device="",
+        img_size=640,
+        show_track=False,
     ):
         # Essential attributes
         self.weights = weights
@@ -69,7 +75,7 @@ class Occultus:
         self.device = device
         self.output = "output"  # ///
         self.name = datetime.datetime.now().strftime("%b_%d_%Y-%H_%M_%S_")
-        self.show_track = False
+        self.show_track = show_track
         self.blur_type = "detect"
         self.select_type = "all"
 
@@ -456,6 +462,7 @@ class Occultus:
                     for index, idt in enumerate(identities):
                         new_preds = {"id": int(idt), "box": bbox_xyxy[index]}
                         bboxes.append(new_preds)
+
             else:
                 result_img = og_img
 
