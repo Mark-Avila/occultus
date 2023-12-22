@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 from occultus.core import Occultus
 import threading
 import os
+import time
 
 
 class App(ctk.CTk):
@@ -389,7 +390,14 @@ class VideoPage(ctk.CTkToplevel):
         self.state("zoomed")
 
         self.current_frame = None
+        self.current_frame_num = 1
         self.prev_slider_val = 0
+        self.is_playing = False
+        self.running = True
+        self.num_frames = 128
+        self.fps = 24
+
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Create a sidebar
         self.sidebar = ctk.CTkFrame(self)
@@ -431,35 +439,31 @@ class VideoPage(ctk.CTkToplevel):
         )
         self.video_feed.pack(pady=(40, 0))
 
-        self.vid_cap = cv2.VideoCapture("video/crowd-2.mp4")
-        self.num_frames = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        _, img = self.vid_cap.read()
-        self.current_frame = self.__imread_to_ctk(img)
-        self.video_feed.configure(text="", image=self.current_frame)
-
-        video_slider = ctk.CTkSlider(
+        self.video_slider = ctk.CTkSlider(
             self.container,
             width=720,
             from_=0,
             to=self.num_frames,
             command=self.on_slider_change,
         )
-        video_slider.pack(pady=(40, 0))
+        self.video_slider.pack(pady=(40, 0))
+        self.video_slider.set(self.current_frame_num)
 
         player_wrapper = ctk.CTkFrame(self.container, width=720, fg_color="transparent")
         player_wrapper.pack(pady=(40, 0))
 
-        video_start_btn = ctk.CTkButton(player_wrapper, width=80, text="Start")
-        video_start_btn.pack(padx=20, side=ctk.LEFT)
-        video_play_btn = ctk.CTkButton(player_wrapper, width=80, text="Play")
-        video_play_btn.pack(padx=20, side=ctk.LEFT)
-        video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
-        video_end_btn.pack(padx=20, side=ctk.LEFT)
+        self.video_start_btn = ctk.CTkButton(player_wrapper, width=80, text="Start")
+        self.video_start_btn.pack(padx=20, side=ctk.LEFT)
+        self.video_play_btn = ctk.CTkButton(
+            player_wrapper, width=80, text="Play", command=self.on_video_play
+        )
+        self.video_play_btn.pack(padx=20, side=ctk.LEFT)
+        self.video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
+        self.video_end_btn.pack(padx=20, side=ctk.LEFT)
 
         # Start the webcam thread
-        # video_thread = threading.Thread(target=self.video_thread)
-        # video_thread.start()
+        video_thread = threading.Thread(target=self.video_thread)
+        video_thread.start()
 
         self.update_feed()
 
@@ -477,13 +481,16 @@ class VideoPage(ctk.CTkToplevel):
         print(keys[value])
 
     def update_feed(self):
+        self.after(int(1000 / self.fps), self.update_feed)
+
         # Update the Tkinter GUI with the latest frame
         if hasattr(self, "current_frame"):
             # if self.is_recording:
             #     self.occultus.save_video(frame=self.raw_frame, iterables=self.iterables)
             self.video_feed.configure(text="", image=self.current_frame)
 
-        self.after(4, self.update_feed)
+        if self.is_playing:
+            self.video_slider.set(self.current_frame_num)
 
     def on_slider_change(self, value):
         value = int(value)
@@ -492,42 +499,73 @@ class VideoPage(ctk.CTkToplevel):
             self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, value - 1)
             _, frame = self.vid_cap.read()
             frame = self.__imread_to_ctk(frame)
+            self.current_frame_num = value
             self.current_frame = frame
+            # print(value)
 
     def on_video_play(self):
-        pass
+        self.video_play_btn.configure(text="Pause", command=self.on_video_pause)
+        self.video_slider.configure(state="disabled")
+        self.is_playing = True
 
-    # def video_thread(self):
-    #     cap = cv2.VideoCapture("video/crowd-2.mp4")
+    def on_video_pause(self):
+        self.video_play_btn.configure(text="Play", command=self.on_video_play)
+        self.video_slider.configure(state="normal")
+        self.is_playing = False
 
-    #     if not cap.isOpened():
-    #         cap.release()
-    #         raise Exception("Failed to load video")
+    def update_slider_numframes(self):
+        self.video_slider.configure(to=self.num_frames)
 
-    #     frame = 1
-    #     while True:
-    #         ret_val, og_img = cap.read()
+    def update_slider_currframe(self):
+        self.video_slider.configure(to=self.num_frames)
 
-    #         if not ret_val:
-    #             break
+    def video_thread(self):
+        self.vid_cap = cv2.VideoCapture("video/crowd.mp4")
 
-    #         img = cv2.cvtColor(og_img, cv2.COLOR_BGR2RGBA)
-    #         img = Image.fromarray(img)
-    #         imgtk = ctk.CTkImage(img, size=(720, 480))
-    #         self.current_frame = imgtk
-    #         frame = frame + 1
+        if not self.vid_cap.isOpened():
+            self.vid_cap.release()
+            raise Exception("Failed to load video")
 
-    #         # Introduce a delay to match the video frame rate (assuming 30 frames per second)
-    #         delay = int(1000 / 30)  # Delay to achieve 30 frames per second
-    #         cv2.waitKey(delay)
+        self.num_frames = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.fps = int(self.vid_cap.get(cv2.CAP_PROP_FPS))
 
-    #     cap.release()
+        self.after(0, self.update_slider_numframes)
+
+        _, img = self.vid_cap.read()
+        self.current_frame = self.__imread_to_ctk(img)
+
+        while True:
+            if not self.running:
+                break
+
+            if self.is_playing:
+                ret, og_img = self.vid_cap.read()
+
+                if not ret:
+                    self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    self.current_frame = None
+                    self.is_playing = False
+
+                if ret:
+                    imgtk = self.__imread_to_ctk(og_img)
+                    self.current_frame_num = self.vid_cap.get(cv2.CAP_PROP_POS_FRAMES)
+                    self.current_frame = imgtk
+
+            # Introduce a delay to match the video frame rate (assuming 30 frames per second)
+            delay = int(1000 / 30)  # Delay to achieve 30 frames per second
+            cv2.waitKey(delay)
 
     def __imread_to_ctk(self, frame):
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
         img = Image.fromarray(img)
         imgtk = ctk.CTkImage(img, size=(720, 480))
         return imgtk
+
+    def on_close(self):
+        # Release the video feed and close the window
+        self.running = False
+        self.vid_cap.release()
+        self.destroy()
 
 
 if __name__ == "__main__":
