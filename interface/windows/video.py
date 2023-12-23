@@ -13,16 +13,20 @@ class VideoPage(ctk.CTkToplevel):
         self.title("Fullscreen App")
         self.state("zoomed")
 
+        self.source = "video/crowd.mp4"
         self.vid_cap = None
         self.current_frame = None
         self.current_frame_num = 1
         self.prev_slider_val = 0
-        self.is_playing = False
         self.running = True
         self.num_frames = 128
         self.fps = 24
         self.slider_debounce_interval = 200  # ms
         self.slider_debounce_id = None
+        self.current_progress = 0
+
+        self.is_playing = False
+        self.is_detecting = True
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -60,9 +64,13 @@ class VideoPage(ctk.CTkToplevel):
         )
         select_privacy.pack(padx=30, pady=5)
 
-        detect_page = DetectPage(self.container, self)
-        detect_page.configure(fg_color="transparent")
-        detect_page.pack(fill="both", expand=True)
+        self.detect_page = DetectPage(self.container, self)
+        self.detect_page.configure(fg_color="transparent")
+        self.detect_page.pack(fill="both", expand=True)
+
+        # Start the webcam thread
+        detect_thread = threading.Thread(target=self.detect_thread)
+        detect_thread.start()
 
         # Video feed display
         # self.video_feed = ctk.CTkLabel(
@@ -164,7 +172,7 @@ class VideoPage(ctk.CTkToplevel):
         self.video_slider.configure(to=self.num_frames)
 
     def video_thread(self):
-        self.vid_cap = cv2.VideoCapture("video/crowd.mp4")
+        self.vid_cap = cv2.VideoCapture()
 
         if not self.vid_cap.isOpened():
             self.vid_cap.release()
@@ -203,6 +211,32 @@ class VideoPage(ctk.CTkToplevel):
             # Introduce a delay to match the video frame rate (assuming 30 frames per second)
             delay = int(1000 / 30)  # Delay to achieve 30 frames per second
             cv2.waitKey(delay)
+
+    def update_progress(self):
+        if self.is_detecting:
+            self.after(100, self.update_progress)
+
+        # Update the Tkinter GUI with the latest frame
+        if hasattr(self, "current_progress"):
+            self.detect_page.set_progress(self.current_progress)
+
+    def detect_thread(self):
+        occultus = Occultus(
+            weights="weights/kamukha-v3.pt",
+            conf_thres=0.25,
+            output_folder="cache",
+            output_name="video",
+        )
+        occultus.set_blur_type("default")
+
+        self.is_detecting = True
+        self.after(0, self.update_progress)
+
+        for _, frame_num, max_frames in occultus.detect_video_generator(self.source):
+            progress_value = frame_num / max_frames
+            self.current_progress = progress_value
+
+        self.is_detecting = False
 
     def __imread_to_ctk(self, frame):
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)

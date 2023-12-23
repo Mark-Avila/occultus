@@ -61,20 +61,26 @@ sys.path.insert(0, "./occultus")
 class Occultus:
     def __init__(
         self,
-        weights: str,
+        weights: str = "weights/kamukha-v3.pt",
         conf_thres=0.25,
         iou=0.45,
         device="",
         img_size=640,
         show_track=False,
+        output_folder="output",
+        output_name=None,
     ):
         # Essential attributes
         self.weights = weights
         self.conf_thres = conf_thres
         self.iou = iou  # ///
         self.device = device
-        self.output = "output"  # ///
-        self.name = datetime.datetime.now().strftime("%b_%d_%Y-%H_%M_%S_")
+        self.output = output_folder  # ///
+        self.name = (
+            datetime.datetime.now().strftime("%b_%d_%Y-%H_%M_%S_")
+            if output_name is None
+            else output_name
+        )
         self.show_track = show_track
         self.blur_type = "detect"
         self.select_type = "all"
@@ -237,6 +243,46 @@ class Occultus:
             print(f"Frame {frame_id}/{frame_count}: Done")
 
             frame_id = frame_id + 1
+
+        writer.release()
+        cv2.destroyAllWindows()
+
+    def detect_video_generator(self, source):
+        cap = cv2.VideoCapture(source)
+        width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
+        height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        output_dir = self.save_dir
+        os.makedirs(output_dir, exist_ok=True)
+        save_path = os.path.join(output_dir, os.path.basename(source))
+
+        writer = cv2.VideoWriter(
+            save_path,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            fps,
+            (int(width), int(height)),
+        )
+
+        frame_id = 1
+        while True:
+            ret_val, og_img = cap.read()
+
+            if not ret_val:
+                break
+
+            img = self.__to_ndarray(og_img)
+            img = self.__preprocess(img)
+            pred = self.__inference(img)
+            [result_img, bboxes] = self.__postprocess(pred, img, og_img)
+            writer.write(result_img)
+
+            yield bboxes, frame_id, frame_count
+
+            frame_id = frame_id + 1
+
+            # print(f"Frame {frame_id}/{frame_count}: Done")
 
         writer.release()
         cv2.destroyAllWindows()

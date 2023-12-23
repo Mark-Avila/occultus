@@ -22,5 +22,5 @@ class DetectPage(ctk.CTkFrame):
         self.progress.set(0)
         self.progress.pack(pady=20)
 
-    def set_progress(self, new_value: int):
+    def set_progress(self, new_value):
         self.progress.set(new_value)
