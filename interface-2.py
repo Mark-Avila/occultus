@@ -396,6 +396,8 @@ class VideoPage(ctk.CTkToplevel):
         self.running = True
         self.num_frames = 128
         self.fps = 24
+        self.slider_debounce_interval = 200  # ms
+        self.slider_debounce_id = None
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -461,6 +463,8 @@ class VideoPage(ctk.CTkToplevel):
         self.video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
         self.video_end_btn.pack(padx=20, side=ctk.LEFT)
 
+        self.video_feed.bind("<Button-1>", self.on_feed_click)
+
         # Start the webcam thread
         video_thread = threading.Thread(target=self.video_thread)
         video_thread.start()
@@ -493,6 +497,18 @@ class VideoPage(ctk.CTkToplevel):
             self.video_slider.set(self.current_frame_num)
 
     def on_slider_change(self, value):
+        # Cancel the previous after event if it exists
+        if self.slider_debounce_id is not None:
+            self.after_cancel(self.slider_debounce_id)
+
+        # Schedule a new after event
+        self.slider_debounce_id = self.after(
+            self.slider_debounce_interval, self.debounced_on_slider_change, value
+        )
+
+    def debounced_on_slider_change(self, value):
+        # This function will be called when the timer times out
+        # Implement the actual logic you want to perform
         value = int(value)
         if value != self.prev_slider_val:
             self.prev_slider_val = value
@@ -501,7 +517,6 @@ class VideoPage(ctk.CTkToplevel):
             frame = self.__imread_to_ctk(frame)
             self.current_frame_num = value
             self.current_frame = frame
-            # print(value)
 
     def on_video_play(self):
         self.video_play_btn.configure(text="Pause", command=self.on_video_pause)
@@ -543,7 +558,12 @@ class VideoPage(ctk.CTkToplevel):
 
                 if not ret:
                     self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    self.current_frame = None
+                    self.current_frame_num = 0
+
+                    _, og_img = self.vid_cap.read()
+                    imgtk = self.__imread_to_ctk(og_img)
+                    self.current_frame = imgtk
+
                     self.is_playing = False
 
                 if ret:
@@ -566,6 +586,12 @@ class VideoPage(ctk.CTkToplevel):
         self.running = False
         self.vid_cap.release()
         self.destroy()
+
+    def on_feed_click(self, event):
+        # Get the coordinates of the mouse click relative to the label
+        coords = (event.x, event.y)
+
+        print(coords)
 
 
 if __name__ == "__main__":
