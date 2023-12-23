@@ -69,6 +69,7 @@ class Occultus:
         show_track=False,
         output_folder="output",
         output_name=None,
+        output_create_folder=True,
     ):
         # Essential attributes
         self.weights = weights
@@ -93,8 +94,10 @@ class Occultus:
 
         set_logging()
 
-        self.save_dir = Path(
-            increment_path(Path(self.output) / self.name, exist_ok=False)
+        self.save_dir = (
+            Path(increment_path(Path(self.output) / self.name, exist_ok=False))
+            if output_create_folder
+            else Path(self.output)
         )
         self.tracker = Sort()
         self.augment = False

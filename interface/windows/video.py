@@ -3,6 +3,7 @@ import cv2
 from PIL import Image
 from occultus.core import Occultus
 import threading
+import os
 
 from interface.pages.detect import *
 
@@ -13,7 +14,8 @@ class VideoPage(ctk.CTkToplevel):
         self.title("Fullscreen App")
         self.state("zoomed")
 
-        self.source = "video/crowd.mp4"
+        self.source = "video/crowd-2.mp4"
+        self.filename = ""
         self.vid_cap = None
         self.current_frame = None
         self.current_frame_num = 1
@@ -72,41 +74,7 @@ class VideoPage(ctk.CTkToplevel):
         detect_thread = threading.Thread(target=self.detect_thread)
         detect_thread.start()
 
-        # Video feed display
-        # self.video_feed = ctk.CTkLabel(
-        #     self.container, fg_color="#000000", text="Loading", width=720, height=480
-        # )
-        # self.video_feed.pack(pady=(40, 0))
-
-        # self.video_slider = ctk.CTkSlider(
-        #     self.container,
-        #     width=720,
-        #     from_=0,
-        #     to=self.num_frames,
-        #     command=self.on_slider_change,
-        # )
-        # self.video_slider.pack(pady=(40, 0))
-        # self.video_slider.set(self.current_frame_num)
-
-        # player_wrapper = ctk.CTkFrame(self.container, width=720, fg_color="transparent")
-        # player_wrapper.pack(pady=(40, 0))
-
-        # self.video_start_btn = ctk.CTkButton(player_wrapper, width=80, text="Start")
-        # self.video_start_btn.pack(padx=20, side=ctk.LEFT)
-        # self.video_play_btn = ctk.CTkButton(
-        #     player_wrapper, width=80, text="Play", command=self.on_video_play
-        # )
-        # self.video_play_btn.pack(padx=20, side=ctk.LEFT)
-        # self.video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
-        # self.video_end_btn.pack(padx=20, side=ctk.LEFT)
-
-        # self.video_feed.bind("<Button-1>", self.on_feed_click)
-
-        # Start the webcam thread
-        # video_thread = threading.Thread(target=self.video_thread)
-        # video_thread.start()
-
-        # self.update_feed()
+        self.check_isdetecting()
 
     def on_privacy_select(self, value: str):
         print(value.lower())
@@ -120,6 +88,57 @@ class VideoPage(ctk.CTkToplevel):
         }
 
         print(keys[value])
+
+    def check_isdetecting(self):
+        if self.is_detecting:
+            self.after(1000, self.check_isdetecting)
+        else:
+            self.detect_page.destroy()
+
+            # Video feed display
+            self.video_feed = ctk.CTkLabel(
+                self.container,
+                fg_color="#000000",
+                text="Loading",
+                width=720,
+                height=480,
+            )
+            self.video_feed.pack(pady=(40, 0))
+
+            self.video_slider = ctk.CTkSlider(
+                self.container,
+                width=720,
+                from_=0,
+                to=self.num_frames,
+                command=self.on_slider_change,
+            )
+            self.video_slider.pack(pady=(40, 0))
+            self.video_slider.set(self.current_frame_num)
+
+            player_wrapper = ctk.CTkFrame(
+                self.container, width=720, fg_color="transparent"
+            )
+            player_wrapper.pack(pady=(40, 0))
+
+            self.video_start_btn = ctk.CTkButton(player_wrapper, width=80, text="Start")
+            self.video_start_btn.pack(padx=20, side=ctk.LEFT)
+            self.video_play_btn = ctk.CTkButton(
+                player_wrapper, width=80, text="Play", command=self.on_video_play
+            )
+            self.video_play_btn.pack(padx=20, side=ctk.LEFT)
+            self.video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
+            self.video_end_btn.pack(padx=20, side=ctk.LEFT)
+
+            self.video_feed.bind("<Button-1>", self.on_feed_click)
+
+            # Start the webcam thread
+            video_thread = threading.Thread(target=self.video_thread)
+            video_thread.start()
+
+            self.update_feed()
+
+            # self.edit_page = EditPage(self.container, self)
+            # self.edit_page.pack(fill="both", expand=True)
 
     def update_feed(self):
         self.after(int(1000 / self.fps), self.update_feed)
@@ -172,7 +191,7 @@ class VideoPage(ctk.CTkToplevel):
         self.video_slider.configure(to=self.num_frames)
 
     def video_thread(self):
-        self.vid_cap = cv2.VideoCapture()
+        self.vid_cap = cv2.VideoCapture(f"cache/{self.filename}")
 
         if not self.vid_cap.isOpened():
             self.vid_cap.release()
@@ -221,11 +240,14 @@ class VideoPage(ctk.CTkToplevel):
             self.detect_page.set_progress(self.current_progress)
 
     def detect_thread(self):
+        self.filename = os.path.basename(self.source)
+
         occultus = Occultus(
             weights="weights/kamukha-v3.pt",
             conf_thres=0.25,
             output_folder="cache",
-            output_name="video",
+            output_name=self.filename,
+            output_create_folder=False,
         )
         occultus.set_blur_type("default")
 
