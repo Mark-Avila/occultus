@@ -14,7 +14,7 @@ class VideoPage(ctk.CTkToplevel):
         self.title("Fullscreen App")
         self.state("zoomed")
 
-        self.source = "video/crowd-2.mp4"
+        self.source = "video/mememe.mp4"
         self.filename = ""
         self.vid_cap = None
         self.current_frame = None
@@ -26,6 +26,8 @@ class VideoPage(ctk.CTkToplevel):
         self.slider_debounce_interval = 200  # ms
         self.slider_debounce_id = None
         self.current_progress = 0
+
+        self.id_list = []
 
         self.is_playing = False
         self.is_detecting = True
@@ -98,6 +100,33 @@ class VideoPage(ctk.CTkToplevel):
                 width=240,
             )
             select_privacy.pack(padx=30, pady=5)
+
+            input_id_label = ctk.CTkLabel(self.sidebar, text="Add/Remove IDs")
+            input_id_label.pack(padx=30, pady=5)
+
+            self.input_id = ctk.CTkTextbox(self.sidebar, height=32)
+            self.input_id.pack(padx=0, pady=5)
+
+            btns_container = ctk.CTkFrame(
+                self.sidebar, fg_color="transparent", width=150
+            )
+            btns_container.pack(padx=30, pady=5)
+
+            input_add_btn = ctk.CTkButton(
+                btns_container, text="Add", width=75, command=self.add_id
+            )
+            input_add_btn.pack(padx=2, pady=5, side=ctk.LEFT)
+
+            input_remove_btn = ctk.CTkButton(
+                btns_container, text="Remove", width=75, command=self.remove_id
+            )
+            input_remove_btn.pack(padx=2, pady=5, side=ctk.LEFT)
+
+            self.id_listbox = ScrollableLabelButtonFrame(self.sidebar, height=128)
+            self.id_listbox.pack(padx=30, pady=5, fill="x")
+
+            for id in self.id_list:
+                self.id_listbox.add_item(id)
 
             # Video feed display
             self.video_feed = ctk.CTkLabel(
@@ -194,6 +223,26 @@ class VideoPage(ctk.CTkToplevel):
     def update_slider_currframe(self):
         self.video_slider.configure(to=self.num_frames)
 
+    def add_id(self):
+        new_id = self.input_id.get("1.0", "end-1c")
+
+        if new_id.isdigit():
+            self.id_list.append(new_id)
+            self.id_listbox.add_item(new_id)
+
+        if new_id:
+            self.input_id.delete("1.0", "end")
+
+    def remove_id(self):
+        id = self.input_id.get("1.0", "end-1c")
+
+        if id.isdigit():
+            self.id_list.remove(id)
+            self.id_listbox.remove(id)
+
+        if id:
+            self.input_id.delete("1.0", "end")
+
     def video_thread(self):
         self.vid_cap = cv2.VideoCapture(f"cache/{self.filename}")
 
@@ -285,3 +334,35 @@ class VideoPage(ctk.CTkToplevel):
         coords = (event.x, event.y)
 
         print(coords)
+
+
+class ScrollableLabelButtonFrame(ctk.CTkScrollableFrame):
+    def __init__(self, master, command=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.grid_columnconfigure(0, weight=1)
+
+        self.command = command
+        self.radiobutton_variable = ctk.StringVar()
+        self.label_list = []
+        self.button_list = []
+
+    def add_item(self, item, image=None):
+        label = ctk.CTkLabel(
+            self, text=item, image=image, compound="left", padx=5, anchor="w"
+        )
+        button = ctk.CTkButton(self, text="Remove", width=100, height=24)
+        if self.command is not None:
+            button.configure(command=lambda: self.command(item))
+        label.grid(row=len(self.label_list), column=0, pady=(0, 10), sticky="w")
+        button.grid(row=len(self.button_list), column=1, pady=(0, 10), padx=5)
+        self.label_list.append(label)
+        self.button_list.append(button)
+
+    def remove_item(self, item):
+        for label, button in zip(self.label_list, self.button_list):
+            if item == label.cget("text"):
+                label.destroy()
+                button.destroy()
+                self.label_list.remove(label)
+                self.button_list.remove(button)
+                return
