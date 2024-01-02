@@ -67,6 +67,7 @@ class Occultus:
         device="",
         img_size=640,
         show_track=False,
+        show_label=False,
         output_folder="output",
         output_name=None,
         output_create_folder=True,
@@ -88,7 +89,7 @@ class Occultus:
 
         self.flipped = False
         self.nobbox = False
-        self.nolabel = True
+        self.nolabel = not show_label
         self.id_list: list = []
         self.model = {}
 

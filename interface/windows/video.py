@@ -248,6 +248,7 @@ class VideoPage(ctk.CTkToplevel):
             output_folder="cache",
             output_name=self.filename,
             output_create_folder=False,
+            show_label=True,
         )
         occultus.set_blur_type("default")
 
