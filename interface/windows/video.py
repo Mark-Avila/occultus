@@ -32,41 +32,11 @@ class VideoPage(ctk.CTkToplevel):
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # Create a sidebar
-        self.sidebar = ctk.CTkFrame(self)
-        self.sidebar.pack(side=ctk.LEFT, fill=ctk.Y)
-
         # Create a container frame
-        self.container = ctk.CTkFrame(self, fg_color="transparent")
-        self.container.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
+        self.detect_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.detect_container.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
 
-        censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
-        censor_label.pack(pady=5)
-
-        censor_options = ["Gaussian", "Pixelized", "Fill", "Detect"]
-        censor_privacy = ctk.CTkOptionMenu(
-            master=self.sidebar,
-            values=censor_options,
-            command=self.on_censor_select,
-            width=240,
-        )
-
-        censor_privacy.pack(padx=30, pady=5)
-
-        privacy_label = ctk.CTkLabel(self.sidebar, text="Privacy type")
-        privacy_label.pack(pady=5)
-
-        privacy_options = ["All", "Specific", "Exclude"]
-
-        select_privacy = ctk.CTkOptionMenu(
-            master=self.sidebar,
-            values=privacy_options,
-            command=self.on_privacy_select,
-            width=240,
-        )
-        select_privacy.pack(padx=30, pady=5)
-
-        self.detect_page = DetectPage(self.container, self)
+        self.detect_page = DetectPage(self.detect_container, self)
         self.detect_page.configure(fg_color="transparent")
         self.detect_page.pack(fill="both", expand=True)
 
@@ -93,7 +63,41 @@ class VideoPage(ctk.CTkToplevel):
         if self.is_detecting:
             self.after(1000, self.check_isdetecting)
         else:
-            self.detect_page.destroy()
+            self.detect_container.destroy()
+
+            # Create a sidebar
+            self.sidebar = ctk.CTkFrame(self)
+            self.sidebar.pack(side=ctk.LEFT, fill=ctk.Y)
+
+            # Create a container frame
+            self.container = ctk.CTkFrame(self, fg_color="transparent")
+            self.container.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
+
+            censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
+            censor_label.pack(pady=5)
+
+            censor_options = ["Gaussian", "Pixelized", "Fill", "Detect"]
+            censor_privacy = ctk.CTkOptionMenu(
+                master=self.sidebar,
+                values=censor_options,
+                command=self.on_censor_select,
+                width=240,
+            )
+
+            censor_privacy.pack(padx=30, pady=5)
+
+            privacy_label = ctk.CTkLabel(self.sidebar, text="Privacy type")
+            privacy_label.pack(pady=5)
+
+            privacy_options = ["All", "Specific", "Exclude"]
+
+            select_privacy = ctk.CTkOptionMenu(
+                master=self.sidebar,
+                values=privacy_options,
+                command=self.on_privacy_select,
+                width=240,
+            )
+            select_privacy.pack(padx=30, pady=5)
 
             # Video feed display
             self.video_feed = ctk.CTkLabel(
