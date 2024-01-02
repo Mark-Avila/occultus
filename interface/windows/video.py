@@ -28,6 +28,8 @@ class VideoPage(ctk.CTkToplevel):
         self.current_progress = 0
 
         self.id_list = []
+        self.privacy_mode = ""
+        self.censor_mode = ""
 
         self.is_playing = False
         self.is_detecting = True
@@ -42,24 +44,15 @@ class VideoPage(ctk.CTkToplevel):
         self.detect_page.configure(fg_color="transparent")
         self.detect_page.pack(fill="both", expand=True)
 
+        # # Start the webcam thread
+        detect_thread = threading.Thread(
+            target=self.detect_thread,
+            args=("weights/kamukha-v3.pt", "cache", self.filename, False, True),
+        )
         # Start the webcam thread
-        detect_thread = threading.Thread(target=self.detect_thread)
         detect_thread.start()
 
         self.check_isdetecting()
-
-    def on_privacy_select(self, value: str):
-        print(value.lower())
-
-    def on_censor_select(self, value: str):
-        keys = {
-            "Gaussian": "gaussian",
-            "Pixelized": "pixel",
-            "Fill": "fill",
-            "Detect": "default",
-        }
-
-        print(keys[value])
 
     def check_isdetecting(self):
         if self.is_detecting:
@@ -125,6 +118,11 @@ class VideoPage(ctk.CTkToplevel):
             self.id_listbox = ScrollableLabelButtonFrame(self.sidebar, height=128)
             self.id_listbox.pack(padx=30, pady=5, fill="x")
 
+            render_button = ctk.CTkButton(
+                self.sidebar, text="Render", fg_color="red", command=self.on_render
+            )
+            render_button.pack(padx=30, pady=5, fill="x")
+
             for id in self.id_list:
                 self.id_listbox.add_item(id)
 
@@ -174,16 +172,17 @@ class VideoPage(ctk.CTkToplevel):
             # self.edit_page.pack(fill="both", expand=True)
 
     def update_feed(self):
-        self.after(int(1000 / self.fps), self.update_feed)
+        if self.running:
+            self.after(int(1000 / self.fps), self.update_feed)
 
-        # Update the Tkinter GUI with the latest frame
-        if hasattr(self, "current_frame"):
-            # if self.is_recording:
-            #     self.occultus.save_video(frame=self.raw_frame, iterables=self.iterables)
-            self.video_feed.configure(text="", image=self.current_frame)
+            # Update the Tkinter GUI with the latest frame
+            if hasattr(self, "current_frame"):
+                # if self.is_recording:
+                #     self.occultus.save_video(frame=self.raw_frame, iterables=self.iterables)
+                self.video_feed.configure(text="", image=self.current_frame)
 
-        if self.is_playing:
-            self.video_slider.set(self.current_frame_num)
+            if self.is_playing:
+                self.video_slider.set(self.current_frame_num)
 
     def on_slider_change(self, value):
         # Cancel the previous after event if it exists
@@ -227,7 +226,7 @@ class VideoPage(ctk.CTkToplevel):
         new_id = self.input_id.get("1.0", "end-1c")
 
         if new_id.isdigit():
-            self.id_list.append(new_id)
+            self.id_list.append(int(new_id))
             self.id_listbox.add_item(new_id)
 
         if new_id:
@@ -237,11 +236,25 @@ class VideoPage(ctk.CTkToplevel):
         id = self.input_id.get("1.0", "end-1c")
 
         if id.isdigit():
-            self.id_list.remove(id)
+            self.id_list.remove(int(id))
             self.id_listbox.remove(id)
 
         if id:
             self.input_id.delete("1.0", "end")
+
+    def on_privacy_select(self, value: str):
+        value = value.lower()
+        self.privacy_mode = value
+
+    def on_censor_select(self, value: str):
+        keys = {
+            "Gaussian": "gaussian",
+            "Pixelized": "pixel",
+            "Fill": "fill",
+            "Detect": "default",
+        }
+
+        self.censor_mode = keys[value]
 
     def video_thread(self):
         self.vid_cap = cv2.VideoCapture(f"cache/{self.filename}")
@@ -258,10 +271,7 @@ class VideoPage(ctk.CTkToplevel):
         _, img = self.vid_cap.read()
         self.current_frame = self.__imread_to_ctk(img)
 
-        while True:
-            if not self.running:
-                break
-
+        while self.running:
             if self.is_playing:
                 ret, og_img = self.vid_cap.read()
 
@@ -292,18 +302,33 @@ class VideoPage(ctk.CTkToplevel):
         if hasattr(self, "current_progress"):
             self.detect_page.set_progress(self.current_progress)
 
-    def detect_thread(self):
+    def detect_thread(
+        self,
+        weights: str,
+        output: str,
+        output_name: str,
+        output_create_folder: bool,
+        show_label: bool,
+        blur_type: str = "default",
+        select_type: str = "all",
+        id_list=[],
+    ):
         self.filename = os.path.basename(self.source)
 
         occultus = Occultus(
-            weights="weights/kamukha-v3.pt",
+            weights=weights,
             conf_thres=0.25,
-            output_folder="cache",
-            output_name=self.filename,
-            output_create_folder=False,
-            show_label=True,
+            output_folder=output,
+            output_name=output_name,
+            output_create_folder=output_create_folder,
+            show_label=show_label,
         )
-        occultus.set_blur_type("default")
+
+        occultus.set_blur_type(blur_type)
+        occultus.set_privacy_control(select_type)
+
+        for id in id_list:
+            occultus.append_id(id)
 
         self.is_detecting = True
         self.after(0, self.update_progress)
@@ -313,6 +338,64 @@ class VideoPage(ctk.CTkToplevel):
             self.current_progress = progress_value
 
         self.is_detecting = False
+
+    def render_check_isdetecting(self):
+        if self.is_detecting:
+            self.after(1000, self.render_check_isdetecting)
+        else:
+            self.detect_container.destroy()
+
+            self.rowconfigure(0, weight=1)
+            self.columnconfigure(0, weight=1)
+            self.rowconfigure(2, weight=1)
+            self.columnconfigure(2, weight=1)
+
+            wrapper = ctk.CTkFrame(self, fg_color="transparent")
+            wrapper.grid(row=1, column=1)
+
+            done_label = ctk.CTkLabel(wrapper, text="Render done!")
+            done_label.pack(pady=10)
+            check_label = ctk.CTkLabel(wrapper, text="Check on output folder")
+            check_label.pack(pady=10)
+
+    def on_render(self):
+        self.running = False
+
+        while self.running:
+            if not self.running:
+                break
+
+        self.container.destroy()
+        self.sidebar.destroy()
+
+        # Create a container frame
+        self.detect_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.detect_container.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
+
+        self.detect_page = DetectPage(self.detect_container, self)
+        self.detect_page.configure(fg_color="transparent")
+        self.detect_page.pack(fill="both", expand=True)
+
+        self.detect_page.set_progress(0)
+
+        new_idlist = []
+        for id in self.id_list:
+            new_idlist.append(id)
+
+        # Start the webcam thread
+        detect_thread = threading.Thread(
+            target=self.detect_thread,
+            args=("weights/kamukha-v3.pt", "output", self.filename, False, False),
+            kwargs={
+                "blur_type": self.censor_mode,
+                "select_type": self.privacy_mode,
+                "id_list": new_idlist,
+            },
+        )
+        detect_thread.start()
+
+        self.is_detecting = True
+        self.render_check_isdetecting()
 
     def __imread_to_ctk(self, frame):
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
@@ -332,7 +415,6 @@ class VideoPage(ctk.CTkToplevel):
     def on_feed_click(self, event):
         # Get the coordinates of the mouse click relative to the label
         coords = (event.x, event.y)
-
         print(coords)
 
 

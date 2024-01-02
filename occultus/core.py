@@ -71,6 +71,10 @@ class Occultus:
         output_folder="output",
         output_name=None,
         output_create_folder=True,
+        blur_type="detect",
+        select_type="all",
+        id_list=[],
+        reset_kalman=True,
     ):
         # Essential attributes
         self.weights = weights
@@ -84,13 +88,13 @@ class Occultus:
             else output_name
         )
         self.show_track = show_track
-        self.blur_type = "detect"
-        self.select_type = "all"
+        self.blur_type = blur_type
+        self.select_type = select_type
+        self.id_list: list = id_list
 
         self.flipped = False
         self.nobbox = False
         self.nolabel = not show_label
-        self.id_list: list = []
         self.model = {}
 
         set_logging()
@@ -100,7 +104,13 @@ class Occultus:
             if output_create_folder
             else Path(self.output)
         )
+
         self.tracker = Sort()
+
+        if reset_kalman:
+            # Resets tracking ID's to 0
+            KalmanBoxTracker.count = 0
+
         self.augment = False
         self.device = select_device(device)
         self.half = self.device.type != "cpu"
