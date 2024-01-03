@@ -7,9 +7,10 @@ import os
 
 
 class StreamPage(ctk.CTkToplevel):
-    def __init__(self):
+    def __init__(self, controller):
         ctk.CTkToplevel.__init__(self)
         self.title("Occultus")
+        self.controller = controller
 
         # Create a frame to center the content
         container = ctk.CTkFrame(self, fg_color="transparent")
@@ -189,7 +190,7 @@ class StreamPage(ctk.CTkToplevel):
     def on_close(self):
         # Release the video feed and close the window
         self.running = False
-        self.destroy()
+        self.controller.on_close()
 
     def on_enter(self, event):
         # Change cursor style on hover

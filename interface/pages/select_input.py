@@ -27,7 +27,7 @@ class SelectInputPage(ctk.CTkFrame):
             text="Load video",
             height=40,
             width=256,
-            command=self.open_videopage,
+            command=lambda: self.open_videopage(controller=controller),
         )
         loadvid_button.pack(pady=20)
 
@@ -63,9 +63,9 @@ class SelectInputPage(ctk.CTkFrame):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
 
-    def open_videopage(self):
+    def open_videopage(self, controller):
         # Create an instance of SelectStreamPageWindow
-        video_window = VideoPage()
+        video_window = VideoPage(controller=controller)
 
         # Make the new window modal
         video_window.grab_set()

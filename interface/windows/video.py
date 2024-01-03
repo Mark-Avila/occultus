@@ -9,10 +9,11 @@ from interface.pages.detect import *
 
 
 class VideoPage(ctk.CTkToplevel):
-    def __init__(self):
+    def __init__(self, controller):
         ctk.CTkToplevel.__init__(self)
         self.title("Fullscreen App")
         self.state("zoomed")
+        self.controller = controller
 
         self.source = "video/mememe.mp4"
         self.filename = ""
@@ -410,7 +411,8 @@ class VideoPage(ctk.CTkToplevel):
         if self.vid_cap is not None and self.vid_cap.isOpened():
             self.vid_cap.release()
 
-        self.destroy()
+        # Close main application window
+        self.controller.on_close()
 
     def on_feed_click(self, event):
         # Get the coordinates of the mouse click relative to the label

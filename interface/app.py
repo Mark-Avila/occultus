@@ -30,3 +30,6 @@ class App(ctk.CTk):
     def show_frame(self, cont):
         frame = self.pages[cont]
         frame.tkraise()
+
+    def on_close(self):
+        self.destroy()

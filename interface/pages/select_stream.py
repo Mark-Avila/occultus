@@ -31,7 +31,7 @@ class SelectStreamPage(ctk.CTkFrame):
         camera_button = ctk.CTkButton(
             center_frame,
             text="Camera",
-            command=self.open_streampage,
+            command=lambda: self.open_streampage(controller=controller),
             width=256,
             height=32,
         )
@@ -60,9 +60,9 @@ class SelectStreamPage(ctk.CTkFrame):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
 
-    def open_streampage(self):
+    def open_streampage(self, controller):
         # Create an instance of SelectStreamPageWindow
-        stream_window = StreamPage()
+        stream_window = StreamPage(controller=controller)
         stream_window.title("Select Stream Window")
 
         # Make the new window modal
