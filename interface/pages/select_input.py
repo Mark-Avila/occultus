@@ -2,7 +2,6 @@ import customtkinter as ctk
 
 from interface.pages.select_stream import *
 from interface.pages.landing import *
-from interface.windows.video import *
 
 
 class SelectInputPage(ctk.CTkFrame):

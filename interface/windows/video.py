@@ -4,18 +4,20 @@ from PIL import Image
 from occultus.core import Occultus
 import threading
 import os
+import subprocess
 
 from interface.pages.detect import *
 
 
 class VideoPage(ctk.CTkToplevel):
-    def __init__(self, controller):
+    def __init__(self, controller, source):
         ctk.CTkToplevel.__init__(self)
         self.title("Fullscreen App")
         self.state("zoomed")
-        self.controller = controller
 
-        self.source = "video/mememe.mp4"
+        self.controller = controller
+        self.source = source
+
         self.filename = ""
         self.vid_cap = None
         self.current_frame = None
@@ -354,10 +356,24 @@ class VideoPage(ctk.CTkToplevel):
             wrapper = ctk.CTkFrame(self, fg_color="transparent")
             wrapper.grid(row=1, column=1)
 
-            done_label = ctk.CTkLabel(wrapper, text="Render done!")
+            done_label = ctk.CTkLabel(
+                wrapper, text="Render done!", font=ctk.CTkFont(size=24, weight="bold")
+            )
             done_label.pack(pady=10)
             check_label = ctk.CTkLabel(wrapper, text="Check on output folder")
             check_label.pack(pady=10)
+
+            check_button = ctk.CTkButton(
+                wrapper,
+                text="Open Output folder",
+                height=40,
+                width=256,
+                command=self.on_output_check,
+            )
+            check_button.pack(pady=10)
+
+    def on_output_check(self):
+        subprocess.run(["explorer", "output"])
 
     def on_render(self):
         self.running = False
