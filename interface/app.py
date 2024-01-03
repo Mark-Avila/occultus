@@ -3,6 +3,7 @@ import customtkinter as ctk
 from interface.pages.landing import *
 from interface.pages.select_input import *
 from interface.pages.select_stream import *
+from interface.pages.select_file import *
 
 
 class App(ctk.CTk):
@@ -18,8 +19,8 @@ class App(ctk.CTk):
         self.pages = {}
 
         for Page, page_name in zip(
-            (LandingPage, SelectInputPage, SelectStreamPage),
-            ("Landing", "SelectInput", "SelectStream"),
+            (LandingPage, SelectInputPage, SelectStreamPage, SelectFilePage),
+            ("Landing", "SelectInput", "SelectStream", "SelectFile"),
         ):
             frame = Page(container, self)
             self.pages[page_name] = frame
