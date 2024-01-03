@@ -26,7 +26,7 @@ class LandingPage(ctk.CTkFrame):
             font=ctk.CTkFont(family="Helvetica", size=18),
             width=256,
             height=48,
-            command=lambda: controller.show_frame(SelectInputPage),
+            command=lambda: controller.show_frame("SelectInput"),
         )
         start_button.bind("<Enter>", self.on_enter)
         start_button.bind("<Leave>", self.on_leave)

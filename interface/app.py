@@ -17,12 +17,15 @@ class App(ctk.CTk):
 
         self.pages = {}
 
-        for Page in (LandingPage, SelectInputPage, SelectStreamPage):
+        for Page, page_name in zip(
+            (LandingPage, SelectInputPage, SelectStreamPage),
+            ("Landing", "SelectInput", "SelectStream"),
+        ):
             frame = Page(container, self)
-            self.pages[Page] = frame
+            self.pages[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame(LandingPage)
+        self.show_frame("Landing")
 
     def show_frame(self, cont):
         frame = self.pages[cont]

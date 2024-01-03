@@ -39,6 +39,14 @@ class SelectStreamPage(ctk.CTkFrame):
         camera_label = ctk.CTkLabel(center_frame, text="Use device camera instead")
         camera_label.pack()
 
+        back_button = ctk.CTkButton(
+            self,
+            text="Back",
+            fg_color="transparent",
+            command=lambda: controller.show_frame("SelectInput"),
+        )
+        back_button.pack(pady=20)
+
         stream_start_button.bind("<Enter>", self.on_enter)
         stream_start_button.bind("<Leave>", self.on_leave)
         camera_button.bind("<Enter>", self.on_enter)

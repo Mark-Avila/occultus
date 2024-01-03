@@ -1,6 +1,7 @@
 import customtkinter as ctk
 
 from interface.pages.select_stream import *
+from interface.pages.landing import *
 from interface.windows.video import *
 
 
@@ -35,14 +36,24 @@ class SelectInputPage(ctk.CTkFrame):
             text="Load stream",
             height=40,
             width=256,
-            command=lambda: controller.show_frame(SelectStreamPage),
+            command=lambda: controller.show_frame("SelectStream"),
         )
         loadstream_button.pack()
+
+        back_button = ctk.CTkButton(
+            self,
+            text="Back",
+            fg_color="transparent",
+            command=lambda: controller.show_frame("Landing"),
+        )
+        back_button.pack(pady=20)
 
         loadvid_button.bind("<Enter>", self.on_enter)
         loadvid_button.bind("<Leave>", self.on_leave)
         loadstream_button.bind("<Enter>", self.on_enter)
         loadstream_button.bind("<Leave>", self.on_leave)
+        back_button.bind("<Enter>", self.on_enter)
+        back_button.bind("<Leave>", self.on_leave)
 
     def on_enter(self, event):
         # Change cursor style on hover
