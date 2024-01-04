@@ -154,13 +154,38 @@ class VideoPage(ctk.CTkToplevel):
             )
             player_wrapper.pack(pady=(40, 0))
 
-            self.video_start_btn = ctk.CTkButton(player_wrapper, width=80, text="Start")
+            start_image = Image.open("assets/start.png")
+            self.video_start_btn = ctk.CTkButton(
+                player_wrapper,
+                width=80,
+                height=80,
+                text="",
+                image=ctk.CTkImage(start_image, size=(40, 40)),
+                fg_color="transparent",
+            )
             self.video_start_btn.pack(padx=20, side=ctk.LEFT)
+
+            play_image = Image.open("assets/play.png")
             self.video_play_btn = ctk.CTkButton(
-                player_wrapper, width=80, text="Play", command=self.on_video_play
+                player_wrapper,
+                width=80,
+                height=80,
+                text="",
+                command=self.on_video_play,
+                image=ctk.CTkImage(play_image, size=(40, 40)),
+                fg_color="transparent",
             )
             self.video_play_btn.pack(padx=20, side=ctk.LEFT)
-            self.video_end_btn = ctk.CTkButton(player_wrapper, width=80, text="End")
+
+            end_image = Image.open("assets/end.png")
+            self.video_end_btn = ctk.CTkButton(
+                player_wrapper,
+                width=80,
+                height=80,
+                text="",
+                image=ctk.CTkImage(end_image, size=(40, 40)),
+                fg_color="transparent",
+            )
             self.video_end_btn.pack(padx=20, side=ctk.LEFT)
 
             self.video_feed.bind("<Button-1>", self.on_feed_click)
@@ -210,12 +235,20 @@ class VideoPage(ctk.CTkToplevel):
             self.current_frame = frame
 
     def on_video_play(self):
-        self.video_play_btn.configure(text="Pause", command=self.on_video_pause)
+        pause_image = Image.open("assets/pause.png")
+        self.video_play_btn.configure(
+            command=self.on_video_pause,
+            image=ctk.CTkImage(pause_image, size=(40, 40)),
+        )
         self.video_slider.configure(state="disabled")
         self.is_playing = True
 
     def on_video_pause(self):
-        self.video_play_btn.configure(text="Play", command=self.on_video_play)
+        play_image = Image.open("assets/play.png")
+        self.video_play_btn.configure(
+            command=self.on_video_play,
+            image=ctk.CTkImage(play_image, size=(40, 40)),
+        )
         self.video_slider.configure(state="normal")
         self.is_playing = False
 
