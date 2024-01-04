@@ -4,6 +4,7 @@ from PIL import Image
 from occultus.core import Occultus
 import threading
 import os
+import subprocess
 
 
 class StreamPage(ctk.CTkToplevel):
@@ -74,6 +75,17 @@ class StreamPage(ctk.CTkToplevel):
         )
         record_btn.pack(padx=20, pady=5)
 
+        self.extra_wrapper = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.extra_wrapper.pack_forget()
+
+        message_label = ctk.CTkLabel(self.extra_wrapper, text="Check recording here")
+        message_label.pack(padx=20, pady=5)
+
+        check_btn = ctk.CTkButton(
+            self.extra_wrapper, text="Output", command=self.on_output_check
+        )
+        check_btn.pack(padx=20, pady=5)
+
         record_btn.bind("<Enter>", self.on_enter)
         record_btn.bind("<Leave>", self.on_leave)
         self.feed.bind("<Button-1>", self.on_feed_click)
@@ -130,9 +142,17 @@ class StreamPage(ctk.CTkToplevel):
         if self.is_recording:
             self.is_recording = False
             parent.configure(text="Start")
+
+            self.extra_wrapper.pack(pady=5)
         else:
             self.is_recording = True
+
+            self.extra_wrapper.pack_forget()
+
             parent.configure(text="Stop")
+
+    def on_output_check(self):
+        subprocess.run(["explorer", "webcam_output"])
 
     def webcam_thread(self):
         # Open the video capture
