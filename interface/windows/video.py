@@ -5,6 +5,7 @@ from occultus.core import Occultus
 import threading
 import os
 import subprocess
+import shutil
 
 from interface.pages.detect import *
 
@@ -12,7 +13,7 @@ from interface.pages.detect import *
 class VideoPage(ctk.CTkToplevel):
     def __init__(self, controller, source):
         ctk.CTkToplevel.__init__(self)
-        self.title("Fullscreen App")
+        self.title("Occultus Video")
         self.state("zoomed")
 
         self.controller = controller
@@ -100,7 +101,7 @@ class VideoPage(ctk.CTkToplevel):
             input_id_label = ctk.CTkLabel(self.sidebar, text="Add/Remove IDs")
             input_id_label.pack(padx=30, pady=5)
 
-            self.input_id = ctk.CTkTextbox(self.sidebar, height=32)
+            self.input_id = ctk.CTkEntry(self.sidebar, height=32)
             self.input_id.pack(padx=0, pady=5)
 
             btns_container = ctk.CTkFrame(
@@ -259,24 +260,24 @@ class VideoPage(ctk.CTkToplevel):
         self.video_slider.configure(to=self.num_frames)
 
     def add_id(self):
-        new_id = self.input_id.get("1.0", "end-1c")
+        new_id = self.input_id.get()
 
         if new_id.isdigit():
             self.id_list.append(int(new_id))
             self.id_listbox.add_item(new_id)
 
         if new_id:
-            self.input_id.delete("1.0", "end")
+            self.input_id.delete(0, ctk.END)
 
     def remove_id(self):
-        id = self.input_id.get("1.0", "end-1c")
+        id = self.input_id.get()
 
         if id.isdigit():
             self.id_list.remove(int(id))
             self.id_listbox.remove(id)
 
         if id:
-            self.input_id.delete("1.0", "end")
+            self.input_id.delete(0, ctk.END)
 
     def on_privacy_select(self, value: str):
         value = value.lower()
@@ -422,7 +423,9 @@ class VideoPage(ctk.CTkToplevel):
         self.detect_container = ctk.CTkFrame(self, fg_color="transparent")
         self.detect_container.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)
 
-        self.detect_page = DetectPage(self.detect_container, self)
+        self.detect_page = DetectPage(
+            self.detect_container, self, text="Rendering Video"
+        )
         self.detect_page.configure(fg_color="transparent")
         self.detect_page.pack(fill="both", expand=True)
 
@@ -459,6 +462,11 @@ class VideoPage(ctk.CTkToplevel):
 
         if self.vid_cap is not None and self.vid_cap.isOpened():
             self.vid_cap.release()
+
+        try:
+            shutil.rmtree("cache")
+        except OSError as e:
+            Exception(e)
 
         # Close main application window
         self.controller.on_close()

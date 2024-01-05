@@ -10,6 +10,7 @@ class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         ctk.CTk.__init__(self, *args, **kwargs)
         self.geometry("720x480")
+        self.title("Occultus UI")
 
         container = ctk.CTkFrame(self)
         container.pack(side="top", fill="both", expand=True)

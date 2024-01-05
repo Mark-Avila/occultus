@@ -13,8 +13,27 @@ class SelectFilePage(ctk.CTkFrame):
         center_frame = ctk.CTkFrame(self, fg_color="transparent")
         center_frame.pack(expand=True)
 
-        select_label = ctk.CTkLabel(center_frame, text="Select file with File Browser")
-        select_label.pack(pady=10)
+        select_label = ctk.CTkLabel(
+            center_frame, text="Input file type", font=ctk.CTkFont("Helvetica", 16)
+        )
+        select_label.pack()
+
+        self.stream_input = ctk.CTkEntry(center_frame, width=256, height=32)
+        self.stream_input.pack(pady=(20, 5))
+
+        self.stream_label = ctk.CTkLabel(center_frame, text="File URL")
+        self.stream_label.pack()
+
+        stream_start_button = ctk.CTkButton(
+            center_frame,
+            text="Start",
+            height=32,
+            command=lambda: self.on_stream_start(controller=controller),
+        )
+        stream_start_button.pack(pady=(5, 0))
+
+        or_label = ctk.CTkLabel(center_frame, text="OR")
+        or_label.pack(pady=30)
 
         select_file_button = ctk.CTkButton(
             center_frame,
@@ -68,6 +87,27 @@ class SelectFilePage(ctk.CTkFrame):
         self.file_label.configure(
             text=f"Selected file: {os.path.basename(self.source)}", text_color="white"
         )
+
+    def on_stream_start(self, controller):
+        url_input = self.stream_input.get()
+
+        vid_formats = [
+            ".mov",
+            ".avi",
+            ".mp4",
+            ".mpg",
+            ".mpeg",
+            ".m4v",
+            ".wmv",
+            ".mkv",
+        ]  # acceptable video suffixes
+
+        if any(url_input.endswith(ext) for ext in vid_formats):
+            video_window = VideoPage(controller=controller, source=url_input)
+            video_window.grab_set()
+            self.wait_window(video_window)
+        else:
+            self.stream_label.configure(text="Invalid Video URL", text_color="red")
 
     def open_videopage(self, controller):
         if self.source:

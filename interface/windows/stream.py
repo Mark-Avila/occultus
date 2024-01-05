@@ -10,7 +10,7 @@ import subprocess
 class StreamPage(ctk.CTkToplevel):
     def __init__(self, controller):
         ctk.CTkToplevel.__init__(self)
-        self.title("Occultus")
+        self.title("Occultus Camera")
         self.controller = controller
 
         # Create a frame to center the content
@@ -74,6 +74,9 @@ class StreamPage(ctk.CTkToplevel):
             command=lambda: self.on_record(record_btn),
         )
         record_btn.pack(padx=20, pady=5)
+
+        self.record_label = ctk.CTkLabel(self.sidebar, text="Recording..")
+        self.record_label.pack_forget()
 
         self.extra_wrapper = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.extra_wrapper.pack_forget()
@@ -144,10 +147,12 @@ class StreamPage(ctk.CTkToplevel):
             parent.configure(text="Start")
 
             self.extra_wrapper.pack(pady=5)
+            self.record_label.pack_forget()
         else:
             self.is_recording = True
 
             self.extra_wrapper.pack_forget()
+            self.record_label.pack()
 
             parent.configure(text="Stop")
 
