@@ -2,3 +2,5 @@ occultus_env
 output
 occultus.code-workspace
 video
+cache
+webcam_output
