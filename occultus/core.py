@@ -1,8 +1,8 @@
 """
 Name: Occultus
-Date: December 12, 2023
+Date: Jan 5, 2024
 File Description: The fundamental features and components of Occultus.
-Version: 0.1
+Version: 0.2
 
 Developer/Author: Mark Christian A. Avila
 QA tester: John Remmon G. Castor
@@ -10,6 +10,11 @@ Section/Course: BSCS-NS-4B
 Description: Face detection library with privacy controls: blurring, exclusion, and specific face detection. Capstone Project for Bachelor of Science in Computer Science (Non-stem)
 
 Modification History:
+- December Jan 5, 2024 (ver 0.2):
+    - ver 1.0 of the full interface
+        - Upload, Detect, and render videos
+        - Record live camera with detection
+        - Able to upload online video URL's
 - December 12, 2023 (ver 0.1):
     - First working version that has the project requirements
         - All, Specific, and Exclusion censoring
@@ -19,6 +24,12 @@ Modification History:
     - Privacy control handling
     - Documentation
     - Seperated model initialization, inference, and post process into methods
+
+Planned:
+- Live recording links/URL's
+- Select face in recording via click
+- Live preview of selected options in video
+- Interface Improvements
 """
 
 import time
