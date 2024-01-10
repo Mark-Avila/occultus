@@ -69,6 +69,7 @@ def draw_boxes(
     privacy="all",
     confidences=None,
     names=None,
+    intensity=50,  # Unused
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
@@ -198,6 +199,7 @@ def fill_boxes(
     privacy="all",
     confidences=None,
     names=None,
+    intensity=50,  # Unused
 ):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]

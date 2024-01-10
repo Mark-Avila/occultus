@@ -42,28 +42,18 @@ import numpy as np
 import random
 import datetime
 
-from PIL import ImageTk
 from occultus.models.experimental import attempt_load
 from occultus.utils.datasets import letterbox
 from occultus.utils.general import (
     check_img_size,
-    check_imshow,
     non_max_suppression,
-    apply_classifier,
     scale_coords,
     set_logging,
     increment_path,
 )
 from occultus.utils.plots import draw_boxes, blur_boxes, pixelate_boxes, fill_boxes
-from occultus.utils.torch_utils import (
-    select_device,
-    load_classifier,
-    time_synchronized,
-    TracedModel,
-)
-
+from occultus.utils.torch_utils import select_device
 from occultus.utils.sort import *
-
 import sys
 
 sys.path.insert(0, "./occultus")
@@ -72,7 +62,7 @@ sys.path.insert(0, "./occultus")
 class Occultus:
     def __init__(
         self,
-        weights: str = "weights/kamukha-v3.pt",
+        weights,
         conf_thres=0.25,
         iou=0.45,
         device="",
@@ -86,6 +76,7 @@ class Occultus:
         select_type="all",
         id_list=[],
         reset_kalman=True,
+        intensity=51,
     ):
         # Essential attributes
         self.weights = weights
@@ -102,6 +93,7 @@ class Occultus:
         self.blur_type = blur_type
         self.select_type = select_type
         self.id_list: list = id_list
+        self.intensity = intensity
 
         self.flipped = False
         self.nobbox = False
@@ -215,6 +207,30 @@ class Occultus:
         return
 
     def detect(self, frame):
+        """
+        This method takes a cv2 frame as input, applies face detection using the specified pre-trained model,
+        and will returns the processed frame with applied detections and blurring. The method also provides
+        information about the detected faces, including their tracking IDs and bounding box coordinates.
+
+        Parameters:
+        - frame: cv2 Frame
+
+        Example:
+        ```python
+        occultus = Occultus("path/to/weights.pt", ...args)
+        cap = VideoCapture(0)
+        ret_val, frame = cap.read()
+        detected_frame, boxes = occultus.detect(frame)
+        cv2.imshow("Detected Frame", detected_frame)
+        ```
+
+        Returns:
+        - detected_frame: cv2 Frame with applied detections and blurring
+        - boxes: List of dictionaries, each dict containing the following values:
+            - ID: Object tracking ID
+            - Box: Object Boxes (coordinates of the detected face)
+        """
+
         img = self.__to_ndarray(frame)
         img = self.__preprocess(img)
         pred = self.__inference(img)
@@ -223,19 +239,68 @@ class Occultus:
         # [frame, bboxes] = results
         return results
 
-    def detect_image(self, source):
+    def detect_image(self, source, intensity=51):
+        """
+        A method for quick face detection and blurring from an image source
+
+        Parameters:
+        - source (str): Image file path
+
+        Example:
+        ```python
+        occultus = Occultus("path/to/weights.pt", ...args)
+        occultus.detect_image("path/to/image.jpg")
+        ```
+
+        Returns:
+            - image: cv2 frame of image with face detection and blurring
+        """
         og_img = cv2.imread(source)
         img = self.__to_ndarray(og_img)
         img = self.__preprocess(img)
         pred = self.__inference(img)
         [result_img, bboxes] = self.__postprocess(pred, img, og_img)
 
-        print(bboxes)
+        new_width = 800
+        new_height = 600
+        result_img = cv2.resize(result_img, (new_width, new_height))
+
         cv2.imshow("Occultus", result_img)
         cv2.waitKey(0)  # 1 millisecond
 
+        return result_img
+
     def detect_video(self, source):
+        """
+        A method for quick face detection and blurring from a video source
+
+        Parameters:
+        - source: cv2 Frame
+
+        Output:
+        - MP4 video with face detection and blurring to the output folder
+        """
         cap = cv2.VideoCapture(source)
+
+        if not cap.isOpened():
+            raise FileNotFoundError("Could not find video")
+
+        vid_formats = [
+            ".mov",
+            ".avi",
+            ".mp4",
+            ".mpg",
+            ".mpeg",
+            ".m4v",
+            ".wmv",
+            ".mkv",
+        ]
+
+        vid_format = os.path.splitext(os.path.basename(source))[1]
+
+        if vid_format not in vid_formats:
+            raise ValueError("Invalid video format")
+
         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
         height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -525,6 +590,7 @@ class Occultus:
                     names=names,
                     nobbox=self.nobbox,
                     nolabel=self.nolabel,
+                    intensity=self.intensity,
                 )
 
                 new_preds = None
@@ -538,3 +604,110 @@ class Occultus:
                 result_img = og_img
 
         return [result_img, bboxes]
+
+
+"""
+TODO: Test cases
+
+Occultus constructor - Occultus():
+- POSITIVE TEST CASES:
+    1. Basic Initialization:
+        - Provide valid values for weights.
+        - Use default values for all other parameters.
+    2. Custom Configuration:
+        - Provide valid values for weights.
+        - Set parameters 
+            - conf_thres 
+            - iou
+            - device
+            - img_size
+            - show_track
+            - show_label
+            - output_folder
+            - output_name
+            - output_create_folder
+            - blur_type
+            - select_type
+            - id_list
+            - reset_kalman 
+            - intensity
+            - Set output_folder and output_name to specific values.
+
+- NEGATIVE TEST CASES:
+    1. Invalid Weights:
+    2. Invalid Configuration:
+
+--------------
+
+detect_image():
+
+POSITIVE TEST CASES:
+    1. Put image file path
+
+NEGATIVE TEST CASES:
+    1. Invalid image file path
+    2. Invalid image type (webp)
+
+--------------
+
+detect_video():
+
+POSITIVE TEST CASES:
+    1. Put video file path
+    2. Check video in output folder with date of today
+
+NEGATIVE TEST CASES:
+    1. Invalid video file path
+    2. Invalid type (.jpg, .png)
+
+--------------
+
+detect_input():
+
+POSITIVE TEST CASES:
+    1. Put "0" (string) in the source
+    2. Check video in output folder with date of today
+
+NEGATIVE TEST CASES:
+    1. Invalid video file path
+    2. Invalid type (.jpg, .png)
+    3. number source (0 instead of "0")
+    
+--------------
+
+append_id() / pop_id():
+TEST CASE PROCEDURE:
+    1. initiate occultus
+    2. add number (3) with append_id
+    2. remove number (3) with pop_id
+
+---------------
+
+Stream Interface:
+
+POSITIVE TEST CASES:
+    1. with blur type "default" and privacy "all"
+    2. with blur type "default" and privacy "specific"
+    3. with blur type "default" and privacy "exclude"
+    4. with blur type "pixel" and privacy "all"
+    5. with blur type "pixel" and privacy "specific"
+    6. with blur type "pixel" and privacy "exclude"
+    7. with blur type "gaussian" and privacy "all"
+    8. with blur type "gaussian" and privacy "specific"
+    9. with blur type "gaussian" and privacy "exclude"
+    10. with blur type "fill" and privacy "all"
+    11. with blur type "fill" and privacy "specific"
+    12. with blur type "fill" and privacy "exclude"
+
+NEGATIVE TEST CASES:
+    1. Invalid blur type (number, boolean, etc.)
+    2. wrong blur type (not "default", "pixel", "gaussian", or "fill")
+    3. Empty blur type
+    1. Invalid privacy type (number, boolean, etc.)
+    2. wrong privacy type (not "all", "specific", "exclude")
+    3. Empty privacy type
+    
+
+all must expect a return type of "frame" which is a cv2 frame and a list of dictionaries "boxes" 
+
+"""

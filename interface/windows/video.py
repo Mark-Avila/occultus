@@ -51,7 +51,7 @@ class VideoPage(ctk.CTkToplevel):
         # # Start the webcam thread
         detect_thread = threading.Thread(
             target=self.detect_thread,
-            args=("weights/kamukha-v3.pt", "cache", self.filename, False, True),
+            args=("weights/kamukha-v3.pt", "cache", self.filename, False, False),
         )
         # Start the webcam thread
         detect_thread.start()
