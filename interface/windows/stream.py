@@ -34,6 +34,7 @@ class StreamPage(ctk.CTkToplevel):
         self.sidebar = ctk.CTkFrame(container, width=200)
         self.sidebar.grid(row=0, column=0, sticky="ns")
         self.rowconfigure(0, weight=1)
+        self.thread_started = False
 
         # Video feed display
         self.feed = ctk.CTkLabel(
@@ -42,7 +43,7 @@ class StreamPage(ctk.CTkToplevel):
         self.feed.pack()
 
         censor_label = ctk.CTkLabel(self.sidebar, text="Censor type")
-        censor_label.pack(pady=5)
+        censor_label.pack(pady=5, fill="x")
 
         censor_options = ["Gaussian", "Pixelized", "Fill", "Detect"]
         censor_privacy = ctk.CTkOptionMenu(
@@ -51,10 +52,10 @@ class StreamPage(ctk.CTkToplevel):
             command=self.on_censor_select,
         )
 
-        censor_privacy.pack(padx=20, pady=5)
+        censor_privacy.pack(padx=20, pady=5, fill="x")
 
         privacy_label = ctk.CTkLabel(self.sidebar, text="Privacy type")
-        privacy_label.pack(pady=5)
+        privacy_label.pack(pady=5, fill="x")
 
         privacy_options = ["All", "Specific", "Exclude"]
 
@@ -64,33 +65,35 @@ class StreamPage(ctk.CTkToplevel):
             command=self.on_privacy_select,
         )
 
-        select_privacy.pack(padx=20, pady=5)
+        select_privacy.pack(padx=20, pady=5, fill="x")
 
-        record_btn = ctk.CTkButton(
+        self.record_btn = ctk.CTkButton(
             self.sidebar,
             text="Record",
             fg_color="#FF0000",
             hover_color="#990000",
-            command=lambda: self.on_record(record_btn),
+            command=lambda: self.on_record(self.record_btn),
         )
-        record_btn.pack(padx=20, pady=5)
+        self.record_btn.pack_forget()
 
         self.record_label = ctk.CTkLabel(self.sidebar, text="Recording..")
         self.record_label.pack_forget()
 
+        self.id_list_frame = ScrollableLabelButtonFrame(
+            self.sidebar, command=self.on_remove_id
+        )
+        self.id_list_frame.pack(padx=20, pady=5, fill="x")
+
         self.extra_wrapper = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.extra_wrapper.pack_forget()
-
-        message_label = ctk.CTkLabel(self.extra_wrapper, text="Check recording here")
-        message_label.pack(padx=20, pady=5)
 
         check_btn = ctk.CTkButton(
             self.extra_wrapper, text="Output", command=self.on_output_check
         )
-        check_btn.pack(padx=20, pady=5)
+        check_btn.pack(padx=20, pady=5, fill="x")
 
-        record_btn.bind("<Enter>", self.on_enter)
-        record_btn.bind("<Leave>", self.on_leave)
+        self.record_btn.bind("<Enter>", self.on_enter)
+        self.record_btn.bind("<Leave>", self.on_leave)
         self.feed.bind("<Button-1>", self.on_feed_click)
 
         # Start the webcam thread
@@ -98,6 +101,11 @@ class StreamPage(ctk.CTkToplevel):
         webcam_thread.start()
 
         self.update_feed()
+        self.update_record_btn()
+
+    def on_remove_id(self, item):
+        self.id_list_frame.remove_item(item)
+        self.occultus.remove_id(int(item))
 
     def on_privacy_select(self, value: str):
         self.occultus.set_privacy_control(value.lower())
@@ -110,7 +118,10 @@ class StreamPage(ctk.CTkToplevel):
             "Detect": "default",
         }
 
-        self.occultus.set_blur_type(keys[value])
+        if keys[value] == "default":
+            self.occultus.set_blur_type(keys[value], show_label=True)
+        else:
+            self.occultus.set_blur_type(keys[value], show_label=False)
 
     def is_point_inside_box(self, point, box, padding=50):
         x, y = point
@@ -128,8 +139,10 @@ class StreamPage(ctk.CTkToplevel):
                 print(f"Checking bounding box: {det['box']}")
                 if self.is_point_inside_box(coords, det["box"]):
                     print(f"Click is inside object ID: {det['id']}")
-                    self.occultus.append_id(det["id"])
-                    continue
+                    if det["id"] not in self.occultus.get_ids():
+                        self.occultus.add_id(int(det["id"]))
+                        self.id_list_frame.add_item(det["id"])
+                        continue
 
     def update_feed(self):
         # Update the GUI every 5 milliseconds
@@ -141,18 +154,23 @@ class StreamPage(ctk.CTkToplevel):
             #     self.occultus.save_video(frame=self.raw_frame, iterables=self.iterables)
             self.feed.configure(text="", image=self.current_frame)
 
+    def update_record_btn(self):
+        self.after(500, self.update_record_btn)
+
+        if self.thread_started:
+            self.record_btn.pack(padx=20, pady=5, fill="x")
+
     def on_record(self, parent: ctk.CTkButton):
         if self.is_recording:
             self.is_recording = False
             parent.configure(text="Start")
-
-            self.extra_wrapper.pack(pady=5)
+            self.extra_wrapper.pack(pady=5, fill="x")
             self.record_label.pack_forget()
         else:
             self.is_recording = True
 
             self.extra_wrapper.pack_forget()
-            self.record_label.pack()
+            self.record_label.pack(fill="x")
 
             parent.configure(text="Stop")
 
@@ -162,6 +180,7 @@ class StreamPage(ctk.CTkToplevel):
     def webcam_thread(self):
         # Open the video capture
         self.occultus = Occultus("weights/kamukha-v2.pt")
+        self.occultus.set_blur_type("default", show_label=True)
         self.dets = []
         imgtk = None
 
@@ -185,6 +204,9 @@ class StreamPage(ctk.CTkToplevel):
         for og_img, bboxes in self.occultus.detect_input_generator(frame_interval=2):
             if not self.running:
                 break
+
+            if not self.thread_started:
+                self.thread_started = True
 
             self.dets = bboxes
             img = cv2.cvtColor(og_img, cv2.COLOR_BGR2RGBA)
@@ -224,3 +246,35 @@ class StreamPage(ctk.CTkToplevel):
     def on_leave(self, event):
         # Change cursor style back to the default
         event.widget.configure(cursor="")
+
+
+class ScrollableLabelButtonFrame(ctk.CTkScrollableFrame):
+    def __init__(self, master, command=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.grid_columnconfigure(0, weight=1)
+
+        self.command = command
+        self.radiobutton_variable = ctk.StringVar()
+        self.label_list = []
+        self.button_list = []
+
+    def add_item(self, item, image=None):
+        label = ctk.CTkLabel(
+            self, text=item, image=image, compound="left", padx=5, anchor="w"
+        )
+        button = ctk.CTkButton(self, text="Remove", width=100, height=24)
+        if self.command is not None:
+            button.configure(command=lambda: self.command(item))
+        label.grid(row=len(self.label_list), column=0, pady=(0, 10), sticky="w")
+        button.grid(row=len(self.button_list), column=1, pady=(0, 10), padx=5)
+        self.label_list.append(label)
+        self.button_list.append(button)
+
+    def remove_item(self, item):
+        for label, button in zip(self.label_list, self.button_list):
+            if item == label.cget("text"):
+                label.destroy()
+                button.destroy()
+                self.label_list.remove(label)
+                self.button_list.remove(button)
+                return

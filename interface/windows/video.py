@@ -365,7 +365,7 @@ class VideoPage(ctk.CTkToplevel):
         occultus.set_privacy_control(select_type)
 
         for id in id_list:
-            occultus.append_id(id)
+            occultus.add_id(id)
 
         self.is_detecting = True
         self.after(0, self.update_progress)

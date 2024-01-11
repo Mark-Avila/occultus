@@ -81,16 +81,21 @@ def draw_boxes(
 
         color = (0, 0, 255)
 
+        show_label = False
+
         if not nobbox and id in ids_list and privacy == "specific":
             apply_boxes(img, x1, y1, x2, y2, color, tl)
+            show_label = True
 
         elif not nobbox and id not in ids_list and privacy == "exclude":
             apply_boxes(img, x1, y1, x2, y2, color, tl)
+            show_label = True
 
         elif not nobbox and privacy == "all":
+            show_label = True
             apply_boxes(img, x1, y1, x2, y2, color, tl)
 
-        if not nolabel:
+        if not nolabel and show_label:
             label = (
                 str(id) + ":" + names[cat]
                 if ids is not None
@@ -156,16 +161,21 @@ def blur_boxes(
         cat = int(categories[i]) if categories is not None else 0
         id = int(ids[i]) if ids is not None else 0
 
+        show_label = False
+
         if not nobbox and id in ids_list and privacy == "specific":
             apply_blur(img, x1, y1, x2, y2, intensity)
+            show_label = True
 
         elif not nobbox and id not in ids_list and privacy == "exclude":
             apply_blur(img, x1, y1, x2, y2, intensity)
+            show_label = True
 
         elif not nobbox and privacy == "all":
             apply_blur(img, x1, y1, x2, y2, intensity)
+            show_label = True
 
-        if not nolabel:
+        if not nolabel and show_label:
             label = (
                 str(id) + ":" + names[cat]
                 if ids is not None
@@ -204,6 +214,8 @@ def fill_boxes(
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
 
+        show_label = False
+
         cat = int(categories[i]) if categories is not None else 0
         id = int(ids[i]) if ids is not None else 0
 
@@ -216,7 +228,7 @@ def fill_boxes(
         elif not nobbox and privacy == "all":
             img[y1:y2, x1:x2] = fill_color
 
-        if not nolabel:
+        if not nolabel and show_label:
             label = (
                 str(id) + ":" + names[cat]
                 if ids is not None
@@ -283,6 +295,8 @@ def pixelate_boxes(
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
 
+        show_label = False
+
         cat = int(categories[i]) if categories is not None else 0
         id = int(ids[i]) if ids is not None else 0
 
@@ -295,7 +309,7 @@ def pixelate_boxes(
         elif not nobbox and privacy == "all":
             apply_pixel(img, x1, y1, x2, y2, intensity)
 
-        if not nolabel:
+        if not nolabel and show_label:
             label = (
                 str(id) + ":" + names[cat]
                 if ids is not None

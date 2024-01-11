@@ -131,7 +131,7 @@ class Occultus:
                 .type_as(next(self.model.parameters()))
             )  # run once
 
-    def append_id(self, new_id: int) -> int:
+    def add_id(self, new_id: int) -> int:
         """Append ID value for privacy controls (specific and exclusion)
 
         Args:
@@ -142,19 +142,21 @@ class Occultus:
         else:
             raise ValueError("Invalid ID to append, must be of type integer")
 
-    def pop_id(self, id: int):
+    def remove_id(self, id: int):
         """Pops specified from the ID list for privacy controls (specific and exclusion)
 
         Args:
             id (int): ID to remove/pop
         """
         if isinstance(id, int):
-            if not self.id_list:
-                self.id_list.pop(id)
+            if id in self.id_list:
+                self.id_list.remove(id)
         else:
             raise ValueError("Invalid ID to pop, must be of type integer")
 
-    def set_blur_type(self, new_type: str = "default"):
+    def set_blur_type(
+        self, new_type: str = "default", show_label=False, show_track=False
+    ):
         """Set type of blurring to be applied (default, gaussian, pixel, fill)
 
         Args:
@@ -166,6 +168,8 @@ class Occultus:
             or new_type == "pixel"
             or new_type == "fill"
         ):
+            self.show_track = show_track
+            self.nolabel = not show_label
             self.blur_type = new_type
         else:
             raise ValueError(
@@ -616,6 +620,9 @@ class Occultus:
                 result_img = og_img
 
         return [result_img, bboxes]
+
+    def get_ids(self):
+        return self.id_list
 
 
 """
