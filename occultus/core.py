@@ -337,23 +337,28 @@ class Occultus:
         writer.release()
         cv2.destroyAllWindows()
 
-    def detect_video_generator(self, source):
+    def detect_video_generator(self, source, save_video: bool = True):
         cap = cv2.VideoCapture(source)
+
+        if not cap.isOpened():
+            raise ValueError("Failed to load source")
+
         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
         height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        output_dir = self.save_dir
-        os.makedirs(output_dir, exist_ok=True)
-        save_path = os.path.join(output_dir, os.path.basename(source))
+        if save_video:
+            output_dir = self.save_dir
+            os.makedirs(output_dir, exist_ok=True)
+            save_path = os.path.join(output_dir, os.path.basename(source))
 
-        writer = cv2.VideoWriter(
-            save_path,
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            fps,
-            (int(width), int(height)),
-        )
+            writer = cv2.VideoWriter(
+                save_path,
+                cv2.VideoWriter_fourcc(*"mp4v"),
+                fps,
+                (int(width), int(height)),
+            )
 
         frame_id = 1
         while True:
@@ -366,7 +371,9 @@ class Occultus:
             img = self.__preprocess(img)
             pred = self.__inference(img)
             [result_img, bboxes] = self.__postprocess(pred, img, og_img)
-            writer.write(result_img)
+
+            if save_video:
+                writer.write(result_img)
 
             yield bboxes, frame_id, frame_count
 
@@ -374,7 +381,8 @@ class Occultus:
 
             # print(f"Frame {frame_id}/{frame_count}: Done")
 
-        writer.release()
+        if save_video:
+            writer.release()
         cv2.destroyAllWindows()
 
     def detect_input(self, source: str = "0", frame_interval=2):

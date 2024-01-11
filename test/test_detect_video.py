@@ -22,6 +22,21 @@ class TestDetectVideo(unittest.TestCase):
         self.assertTrue(os.path.exists(f"test_output/{video_name}"))
         shutil.rmtree("test_output")
 
+    def test_video_generator(self):
+        source = "video/mememe.mp4"
+        occultus = Occultus("weights/kamukha-v3.pt")
+
+        try:
+            for boxes, curr_frame, max_frames in occultus.detect_video_generator(
+                source, save_video=False
+            ):
+                self.assertIsInstance(boxes, list)
+                self.assertIsInstance(curr_frame, int)
+                self.assertIsInstance(max_frames, int)
+                break
+        except:
+            self.fail("Failed to detect video")
+
     def test_invalid_path(self):
         occultus = Occultus("weights/kamukha-v3.pt")
         with self.assertRaises(Exception):
