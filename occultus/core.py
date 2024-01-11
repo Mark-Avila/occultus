@@ -382,6 +382,10 @@ class Occultus:
             source = eval(source)
 
         cap = cv2.VideoCapture(source)
+
+        if not cap.isOpened():
+            raise ValueError("Failed to load source")
+
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
 
         while True:
