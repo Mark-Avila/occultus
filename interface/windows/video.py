@@ -114,12 +114,9 @@ class VideoPage(ctk.CTkToplevel):
             )
             input_add_btn.pack(padx=2, pady=5, side=ctk.LEFT)
 
-            input_remove_btn = ctk.CTkButton(
-                btns_container, text="Remove", width=75, command=self.remove_id
+            self.id_listbox = ScrollableLabelButtonFrame(
+                self.sidebar, height=128, command=self.remove_id_click
             )
-            input_remove_btn.pack(padx=2, pady=5, side=ctk.LEFT)
-
-            self.id_listbox = ScrollableLabelButtonFrame(self.sidebar, height=128)
             self.id_listbox.pack(padx=30, pady=5, fill="x")
 
             render_button = ctk.CTkButton(
@@ -269,14 +266,12 @@ class VideoPage(ctk.CTkToplevel):
         if new_id:
             self.input_id.delete(0, ctk.END)
 
-    def remove_id(self):
-        id = self.input_id.get()
+    def remove_id_click(self, item):
+        if item.isdigit():
+            self.id_list.remove(int(item))
+            self.id_listbox.remove_item(item)
 
-        if id.isdigit():
-            self.id_list.remove(int(id))
-            self.id_listbox.remove(id)
-
-        if id:
+        if item:
             self.input_id.delete(0, ctk.END)
 
     def on_privacy_select(self, value: str):
