@@ -104,8 +104,10 @@ class StreamPage(ctk.CTkToplevel):
         self.update_record_btn()
 
     def on_remove_id(self, item):
-        self.id_list_frame.remove_item(item)
-        self.occultus.remove_id(int(item))
+        item = int(item)
+        if item in self.occultus.get_ids():
+            self.id_list_frame.remove_item(item)
+            self.occultus.remove_id(item)
 
     def on_privacy_select(self, value: str):
         self.occultus.set_privacy_control(value.lower())
@@ -136,13 +138,10 @@ class StreamPage(ctk.CTkToplevel):
 
         if self.dets is not None:
             for det in self.dets:
-                print(f"Checking bounding box: {det['box']}")
                 if self.is_point_inside_box(coords, det["box"]):
-                    print(f"Click is inside object ID: {det['id']}")
                     if det["id"] not in self.occultus.get_ids():
                         self.occultus.add_id(int(det["id"]))
                         self.id_list_frame.add_item(det["id"])
-                        continue
 
     def update_feed(self):
         # Update the GUI every 5 milliseconds
@@ -230,6 +229,7 @@ class StreamPage(ctk.CTkToplevel):
             else:
                 if isinstance(writer, cv2.VideoWriter):
                     writer.release()
+                    writer = None
 
         if isinstance(writer, cv2.VideoWriter):
             writer.release()
@@ -254,27 +254,37 @@ class ScrollableLabelButtonFrame(ctk.CTkScrollableFrame):
         self.grid_columnconfigure(0, weight=1)
 
         self.command = command
-        self.radiobutton_variable = ctk.StringVar()
-        self.label_list = []
-        self.button_list = []
+        self.frame_list = []
 
     def add_item(self, item, image=None):
-        label = ctk.CTkLabel(
-            self, text=item, image=image, compound="left", padx=5, anchor="w"
-        )
-        button = ctk.CTkButton(self, text="Remove", width=100, height=24)
-        if self.command is not None:
-            button.configure(command=lambda: self.command(item))
-        label.grid(row=len(self.label_list), column=0, pady=(0, 10), sticky="w")
-        button.grid(row=len(self.button_list), column=1, pady=(0, 10), padx=5)
-        self.label_list.append(label)
-        self.button_list.append(button)
+        if not isinstance(item, str):
+            item = str(item)
+
+        frame = ItemFrame(self, item, image, self.command)
+        frame.pack(fill="x", pady=(0, 10), padx=5, anchor="w")
+        self.frame_list.append(frame)
 
     def remove_item(self, item):
-        for label, button in zip(self.label_list, self.button_list):
-            if item == label.cget("text"):
-                label.destroy()
-                button.destroy()
-                self.label_list.remove(label)
-                self.button_list.remove(button)
+        for frame in self.frame_list:
+            if not isinstance(item, str):
+                item = str(item)
+
+            if item == frame.label.cget("text"):
+                frame.destroy()
+                self.frame_list.remove(frame)
                 return
+
+
+class ItemFrame(ctk.CTkFrame):
+    def __init__(self, master, item, image, command=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.label = ctk.CTkLabel(
+            self, text=item, image=image, compound="left", padx=5, anchor="w"
+        )
+        self.button = ctk.CTkButton(self, text="Remove", width=100, height=24)
+        if command is not None:
+            self.button.configure(command=lambda: command(item))
+
+        self.label.pack(side="left", fill="both")
+        self.button.pack(side="right", padx=5)
