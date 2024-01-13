@@ -32,8 +32,8 @@ class VideoPage(ctk.CTkToplevel):
         self.current_progress = 0
 
         self.id_list = []
-        self.privacy_mode = ""
-        self.censor_mode = ""
+        self.privacy_mode = "all"
+        self.censor_mode = "default"
 
         self.is_playing = False
         self.is_detecting = True
@@ -361,7 +361,9 @@ class VideoPage(ctk.CTkToplevel):
             show_label=show_label,
         )
 
-        occultus.set_blur_type(blur_type)
+        occultus.set_blur_type(
+            blur_type, show_label=True if blur_type == "default" else False
+        )
         occultus.set_privacy_control(select_type)
 
         for id in id_list:

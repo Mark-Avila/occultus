@@ -260,6 +260,10 @@ class Occultus:
             - image: cv2 frame of image with face detection and blurring
         """
         og_img = cv2.imread(source)
+
+        if not og_img.isOpened():
+            raise ValueError("Failed to load image")
+
         img = self.__to_ndarray(og_img)
         img = self.__preprocess(img)
         pred = self.__inference(img)
