@@ -267,7 +267,8 @@ def apply_pixel(img, x1, y1, x2, y2, intensity):
 
     # Ensure that the bounding box has valid dimensions
     if box_width > 0 and box_height > 0:
-        pixel_size = max(1, int(max(box_width, box_height) / intensity))
+        # Calculate pixel size based on intensity, ensuring it is within a specified range
+        pixel_size = max(7, int(max(box_width, box_height) / intensity))
 
         # Pixelate the region inside the bounding box
         region = img[y1:y2, x1:x2]
