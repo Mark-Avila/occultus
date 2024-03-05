@@ -12,21 +12,13 @@ occultus = Occultus("weights/kamukha-v3.pt", blur_type="pixel")
 
 # occultus.detect_image("video/group.jpg")
 
-occultus.detect_input()
+# occultus.detect_input()
 
 # occultus.detect_video("video/crowd.mp4")
 
-"""for (
-    frame_id,
-    boxes,
-) in occultus.detect_input_generator():
-    print(boxes)
-"""
+# for frame_id, boxes in occultus.detect_input_generator():
+#     print(boxes)
 
 
-"""for( boxes,
-     frame_num,
-     max_frame
-) in occultus.detect_video_generator("video/mememe.mp4"):
-    print(boxes, " ID:", frame_num)
-"""
+# for boxes, frame_num, max_frame in occultus.detect_video_generator("video/crowd-2.mp4"):
+#     print("Boxes:", boxes, " ID:", frame_num)

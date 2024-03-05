@@ -346,6 +346,27 @@ class Occultus:
         cv2.destroyAllWindows()
 
     def detect_video_generator(self, source, save_video: bool = True):
+        """
+        Generator method similar to the ``detect_video()`` function, providing additional video data for further processing.
+
+        Parameters:
+            - ``source`` (str): The file path of the input video.
+            - ``save_video`` (bool, optional): Flag indicating whether to save the processed video. Default is False.
+
+        Example:
+            ```python
+            occultus = Occultus("path/to/weights.pt", ...args)
+
+            for bboxes, frame_id, frame_count in occultus.detect_video_generator("video/path.mp4"):
+                print("Bounding Boxes:", bboxes, " | Object ID:", frame_id, " | Frame Count:", frame_count)
+            ```
+
+        Yields:
+            - ``bboxes`` (list): List of bounding box coordinates for the current frame.
+            - ``frame_id``: Object ID for the current frame.
+            - ``frame_count``: Current frame iteration count.
+        """
+
         cap = cv2.VideoCapture(source)
 
         if not cap.isOpened():
@@ -387,13 +408,26 @@ class Occultus:
 
             frame_id = frame_id + 1
 
-            # print(f"Frame {frame_id}/{frame_count}: Done")
-
         if save_video:
             writer.release()
         cv2.destroyAllWindows()
 
     def detect_input(self, source: str = "0", frame_interval=2):
+        """
+        A quick method for detecting and blurring faces from an input device.
+
+        Parameters:
+        - ``source`` (str): The file path of the input video. Defaults to ``0`` for the systems' internal camera (Will not work if it doesn't have one)
+        - ``frame_interval`` (number, optional): Number of frames to skip before grabbing another frame for detection. Defaults to ``2``
+
+        Example:
+        ```
+        from occultus.core import Occultus
+        occultus = Occultus("path/to/weights.pt", ...args)
+
+        occultus.detect_input("0")
+        ```
+        """
         if source.isnumeric():
             source = eval(source)
 
@@ -437,6 +471,22 @@ class Occultus:
         cv2.destroyAllWindows()
 
     def detect_input_generator(self, source: str = "0", frame_interval=2):
+        """
+        A method similar to ``detect_input()``, providing additional video data for further processing
+
+        Parameters:
+        - ``source`` (str): The file path of the input video. Defaults to ``0`` for the systems' internal camera (Will not work if it doesn't have one)
+        - ``frame_interval`` (number, optional): Number of frames to skip before grabbing another frame for detection. Defaults to ``2``
+
+        Example:
+        ```python
+        from occultus.core import Occultus
+        occultus = Occultus("path/to/weights.pt", ...args)
+        for frame_id, boxes in occultus.detect_input_generator():
+            print(boxes)
+            print(frame_id)
+        ```
+        """
         if source.isnumeric():
             source = eval(source)
 
